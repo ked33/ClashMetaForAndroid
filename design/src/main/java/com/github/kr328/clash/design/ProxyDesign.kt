@@ -33,7 +33,7 @@ class ProxyDesign(
         object ReLaunch : Request()
 
         data class PatchMode(val mode: TunnelState.Mode?) : Request()
-        data class Reload(val index: Int) : Request()
+        data class Reload(val index: Int, val generation: Int) : Request()
         data class Select(val index: Int, val name: String) : Request()
         data class UrlTest(val index: Int) : Request()
     }

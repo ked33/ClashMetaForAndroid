@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendProfileLoaded
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -30,7 +31,21 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
     private val reload = Channel<Unit>(Channel.CONFLATED)
     private var activeDebugCycle = "none"
 
+    @Volatile
+    private var activeDebugStage = "idle"
+
     suspend fun debugAudit(phase: String) {
+        val stage = activeDebugStage
+        if (stage != "loaded") {
+            selectionDebug.summary(
+                name = "audit_skipped",
+                dedupeKey = "$activeDebugCycle|$phase|$stage",
+                fields = "cycle=$activeDebugCycle profile=${selectionDebug.profile(store.activeProfile)} phase=$phase stage=$stage reason=profile_not_loaded",
+            )
+            selectionDebug.flush()
+            return
+        }
+
         selectionDebug.audit(store.activeProfile, phase, activeDebugCycle)
     }
 
@@ -73,6 +88,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 loaded = current
                 val cycle = SystemClock.elapsedRealtime().toString()
                 activeDebugCycle = cycle
+                activeDebugStage = stage
 
                 selectionDebug.summary(
                     name = "load_start",
@@ -81,13 +97,16 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "query_imported_profile"
+                activeDebugStage = stage
                 val active = ImportedDao().queryByUUID(current)
                     ?: throw NullPointerException("No profile selected")
 
                 stage = "set_age_key"
+                activeDebugStage = stage
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
 
                 stage = "detach_listener"
+                activeDebugStage = stage
                 Clash.setSelectorUpdateListener(null)
                 selectionDebug.event(
                     name = "listener_detached",
@@ -96,6 +115,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "native_load"
+                activeDebugStage = stage
                 val loadStartedAt = SystemClock.elapsedRealtime()
                 Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
                 selectionDebug.summary(
@@ -105,6 +125,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "query_saved_selections"
+                activeDebugStage = stage
                 val selectionDao = SelectionDao()
                 val saved = selectionDao.querySelections(active.uuid)
                 selectionDebug.summary(
@@ -114,6 +135,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "restore_selections"
+                activeDebugStage = stage
                 val remove = mutableListOf<String>()
                 var patched = 0
                 var verified = 0
@@ -158,6 +180,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 }
 
                 stage = "remove_invalid_selections"
+                activeDebugStage = stage
                 selectionDao.removeSelections(active.uuid, remove)
                 selectionDebug.summary(
                     name = "restore_complete",
@@ -166,6 +189,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "bind_listener"
+                activeDebugStage = stage
                 Clash.setSelectorUpdateListener { group, selected ->
                     val groupToken = selectionDebug.token(group)
                     val selectedToken = selectionDebug.token(selected)
@@ -199,7 +223,11 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 )
 
                 stage = "publish_loaded_profile"
+                activeDebugStage = stage
                 StatusProvider.currentProfile = active.name
+
+                stage = "loaded"
+                activeDebugStage = stage
 
                 service.sendProfileLoaded(current)
 
@@ -221,6 +249,15 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 }
 
                 Log.d("Profile ${active.name} loaded")
+            } catch (e: CancellationException) {
+                selectionDebug.summary(
+                    name = "load_cancelled",
+                    dedupeKey = "$profile|$activeDebugCycle|$stage",
+                    fields = "cycle=$activeDebugCycle profile=$profile stage=$stage",
+                )
+                selectionDebug.flush()
+                activeDebugStage = "cancelled"
+                throw e
             } catch (e: Exception) {
                 selectionDebug.summary(
                     name = "load_failed",
@@ -228,6 +265,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                     fields = "cycle=$activeDebugCycle profile=$profile stage=$stage error=${selectionDebug.error(e)}",
                 )
                 selectionDebug.flush()
+                activeDebugStage = "failed"
                 return enqueueEvent(LoadException(e.message ?: "Unknown"))
             }
         }

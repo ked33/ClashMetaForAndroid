@@ -19,6 +19,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
         val states = List(names.size) { ProxyState("?") }
         val unorderedStates = names.indices.map { names[it] to states[it] }.toMap()
         val reloadLock = Semaphore(10)
+        val reloadGenerations = IntArray(names.size)
 
         val design = ProxyDesign(
             this,
@@ -44,6 +45,8 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 startActivity(ProxyActivity::class.intent)
 
                                 finish()
+                            } else {
+                                design.requests.trySend(ProxyDesign.Request.ReloadAll)
                             }
                         }
                         else -> Unit
@@ -58,16 +61,22 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                         }
                         ProxyDesign.Request.ReloadAll -> {
                             names.indices.forEach { idx ->
-                                design.requests.trySend(ProxyDesign.Request.Reload(idx))
+                                val generation = ++reloadGenerations[idx]
+                                design.requests.trySend(ProxyDesign.Request.Reload(idx, generation))
                             }
                         }
                         is ProxyDesign.Request.Reload -> {
                             launch {
+                                if (it.generation != reloadGenerations[it.index]) return@launch
+
                                 val group = reloadLock.withPermit {
                                     withClash {
                                         queryProxyGroup(names[it.index], uiStore.proxySort)
                                     }
                                 }
+
+                                if (it.generation != reloadGenerations[it.index]) return@launch
+
                                 val state = states[it.index]
 
                                 state.now = group.now
@@ -82,13 +91,16 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                             }
                         }
                         is ProxyDesign.Request.Select -> {
-                            withClash {
+                            val patched = withClash {
                                 patchSelector(names[it.index], it.name)
-
-                                states[it.index].now = it.name
                             }
-
-                            design.requestRedrawVisible()
+                            if (patched) {
+                                reloadGenerations[it.index]++
+                                states[it.index].now = it.name
+                                design.requestRedrawVisible()
+                            } else {
+                                design.requests.send(ProxyDesign.Request.ReloadAll)
+                            }
                         }
                         is ProxyDesign.Request.UrlTest -> {
                             launch {
@@ -96,7 +108,10 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                     healthCheck(names[it.index])
                                 }
 
-                                design.requests.send(ProxyDesign.Request.Reload(it.index))
+                                val generation = ++reloadGenerations[it.index]
+                                design.requests.send(
+                                    ProxyDesign.Request.Reload(it.index, generation)
+                                )
                             }
                         }
                         is ProxyDesign.Request.PatchMode -> {
