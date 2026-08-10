@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
+import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
@@ -57,6 +58,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
 
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
 
+                Clash.setSelectorUpdateListener(null)
                 Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
 
                 val remove = SelectionDao().querySelections(active.uuid)
@@ -64,6 +66,14 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                     .map { it.proxy }
 
                 SelectionDao().removeSelections(active.uuid, remove)
+
+                Clash.setSelectorUpdateListener { group, selected ->
+                    try {
+                        SelectionDao().setSelected(Selection(active.uuid, group, selected))
+                    } catch (e: Exception) {
+                        Log.w("Persist selector update failed", e)
+                    }
+                }
 
                 StatusProvider.currentProfile = active.name
 

@@ -13,6 +13,8 @@ void (*fetch_complete_func)(void *fetch_callback, const char *error);
 
 int (*logcat_received_func)(void *logcat_interface, const char *payload);
 
+int (*selector_updated_func)(void *selector_update_interface, const char *group, const char *selected);
+
 int (*open_content_func)(const char *url, char *error, int error_length);
 
 void (*release_object_func)(void *obj);
@@ -64,6 +66,17 @@ int logcat_received(void *logcat_interface, char *payload) {
     int result = logcat_received_func(logcat_interface, payload);
 
     free(payload);
+
+    return result;
+}
+
+int selector_updated(void *selector_update_interface, char *group, char *selected) {
+    TRACE_METHOD();
+
+    int result = selector_updated_func(selector_update_interface, group, selected);
+
+    free(group);
+    free(selected);
 
     return result;
 }

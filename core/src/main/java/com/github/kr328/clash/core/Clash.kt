@@ -133,6 +133,18 @@ object Clash {
         return Bridge.nativePatchSelector(selector, name)
     }
 
+    fun setSelectorUpdateListener(listener: ((String, String) -> Unit)?) {
+        val callback = listener?.let { handler ->
+            object : SelectorUpdateInterface {
+                override fun updated(group: String, selected: String) {
+                    handler(group, selected)
+                }
+            }
+        }
+
+        Bridge.nativeSetSelectorUpdateListener(callback)
+    }
+
     fun fetchAndValid(
         path: File,
         url: String,
