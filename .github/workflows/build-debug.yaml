@@ -71,14 +71,10 @@ jobs:
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
-      - name: Prepare app config (arm64-only)
+      - name: Prepare app config (arm64-only, official package id)
         run: |
-          cat > local.properties <<'EOF'
-          custom.application.id=com.ked33.clash
-          remove.suffix=true
-          abi.filters=arm64-v8a
-          EOF
-          sed -i 's/^[[:space:]]*//' local.properties
+          # Official Meta package: com.github.metacubex.clash.meta
+          printf '%s\n' 'abi.filters=arm64-v8a' > local.properties
 
       - name: Build (meta, arm64 only; debug signing fallback if no secrets)
         run: ./gradlew --no-daemon --build-cache app:assembleMetaRelease

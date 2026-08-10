@@ -142,11 +142,11 @@ jobs:
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
-      - name: Prepare app config (arm64-only + custom package)
+      - name: Prepare app config (arm64-only, official package id)
         run: |
+          # Official Meta package: com.github.metacubex.clash.meta
+          # (base id + meta flavor suffix; do NOT set custom.application.id / remove.suffix)
           printf '%s\n' \
-            'custom.application.id=com.ked33.clash' \
-            'remove.suffix=true' \
             'abi.filters=arm64-v8a' \
             > local.properties
           cat local.properties
@@ -205,6 +205,6 @@ jobs:
           generate_release_notes: true
           body: |
             Formal **meta** release (signed, **arm64-v8a only**).
-            - Package ID: `com.ked33.clash`
+            - Package ID: `com.github.metacubex.clash.meta` (same as upstream; does not coexist)
             - versionName: `${{ steps.process-version.outputs.versonName }}`
             - versionCode: `${{ steps.process-version.outputs.versonCode }}`
