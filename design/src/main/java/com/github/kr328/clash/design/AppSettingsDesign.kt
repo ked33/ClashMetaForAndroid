@@ -98,6 +98,13 @@ class AppSettingsDesign(
             ) {
                 enabled = !running
             }
+
+            switch(
+                value = srvStore::selectorPersistenceDebug,
+                icon = R.drawable.ic_baseline_adb,
+                title = R.string.selector_persistence_debug,
+                summary = R.string.selector_persistence_debug_summary,
+            )
         }
 
         binding.content.addView(screen.root)

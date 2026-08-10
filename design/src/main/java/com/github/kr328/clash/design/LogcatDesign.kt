@@ -35,6 +35,25 @@ class LogcatDesign(
         }
     }
 
+    fun copyAll() {
+        launch {
+            val messages = adapter.messages
+            if (messages.isEmpty()) {
+                showToast(R.string.no_logs_to_copy, ToastDuration.Short)
+                return@launch
+            }
+
+            val content = messages.joinToString("\n") {
+                "${it.time.format(context)} ${it.sourceAndLevel}: ${it.message}"
+            }
+            val data = ClipData.newPlainText("clash_logs", content)
+
+            context.getSystemService<ClipboardManager>()?.setPrimaryClip(data)
+
+            showToast(R.string.copied, ToastDuration.Short)
+        }
+    }
+
     suspend fun patchMessages(messages: List<LogMessage>, removed: Int, appended: Int) {
         withContext(Dispatchers.Main) {
             adapter.messages = messages

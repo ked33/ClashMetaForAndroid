@@ -49,6 +49,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             while (isActive) {
                 val quit = select<Boolean> {
                     close.onEvent {
+                        config.debugAudit("pre_shutdown")
+
                         true
                     }
                     config.onEvent {

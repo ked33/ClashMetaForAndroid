@@ -41,6 +41,8 @@ class ClashService : BaseService() {
             while (isActive) {
                 val quit = select<Boolean> {
                     close.onEvent {
+                        config.debugAudit("pre_shutdown")
+
                         true
                     }
                     config.onEvent {

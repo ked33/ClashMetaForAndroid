@@ -4,6 +4,7 @@ import android.content.Context
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
+import com.github.kr328.clash.service.clash.SelectionDebugLog
 import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.remote.IClashManager
@@ -16,6 +17,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
     private val store = ServiceStore(context)
+    private val selectionDebug = SelectionDebugLog(store)
     private var logReceiver: ReceiveChannel<LogMessage>? = null
 
     override fun queryTunnelState(): TunnelState {
@@ -47,15 +49,87 @@ class ClashManager(private val context: Context) : IClashManager,
     }
 
     override fun patchSelector(group: String, name: String): Boolean {
-        return Clash.patchSelector(group, name).also {
-            val current = store.activeProfile ?: return@also
+        val current = store.activeProfile
+        val profile = selectionDebug.profile(current)
+        val groupToken = selectionDebug.token(group)
+        val selectedToken = selectionDebug.token(name)
 
-            if (it) {
+        selectionDebug.event(
+            name = "ui_patch_request",
+            dedupeKey = "$profile|$groupToken|$selectedToken",
+            fields = "profile=$profile group=$groupToken selected=$selectedToken",
+        )
+
+        val patched = try {
+            Clash.patchSelector(group, name)
+        } catch (e: Exception) {
+            selectionDebug.summary(
+                name = "ui_patch_failed",
+                dedupeKey = "$profile|$groupToken",
+                fields = "profile=$profile group=$groupToken selected=$selectedToken error=${selectionDebug.error(e)}",
+            )
+            selectionDebug.flush()
+            throw e
+        }
+
+        var actual: String? = null
+        var verificationError: Exception? = null
+        if (patched && selectionDebug.enabled) {
+            try {
+                actual = Clash.querySelectorNow(group)
+            } catch (e: Exception) {
+                verificationError = e
+            }
+        }
+
+        val patchFields = buildString {
+            append("profile=$profile group=$groupToken selected=$selectedToken")
+            append(" patched=$patched actual=${selectionDebug.tokenOrNone(actual)}")
+            append(" verified=${patched && actual == name}")
+            verificationError?.let {
+                append(" verify_error=${selectionDebug.error(it)}")
+            }
+        }
+        selectionDebug.event(
+            name = "ui_patch_result",
+            dedupeKey = "$profile|$groupToken|$selectedToken|$patched",
+            fields = patchFields,
+        )
+
+        if (current == null) {
+            selectionDebug.summary(
+                name = "ui_database_skipped",
+                dedupeKey = groupToken,
+                fields = "profile=none group=$groupToken selected=$selectedToken reason=no_active_profile",
+            )
+            selectionDebug.flush()
+            return patched
+        }
+
+        val databaseAction = if (patched) "upsert" else "remove"
+        try {
+            if (patched) {
                 SelectionDao().setSelected(Selection(current, group, name))
             } else {
                 SelectionDao().removeSelected(current, group)
             }
+
+            selectionDebug.event(
+                name = "ui_database_result",
+                dedupeKey = "$profile|$groupToken|$selectedToken|$databaseAction",
+                fields = "profile=$profile group=$groupToken selected=$selectedToken action=$databaseAction status=ok",
+            )
+        } catch (e: Exception) {
+            selectionDebug.summary(
+                name = "ui_database_failed",
+                dedupeKey = "$profile|$groupToken|$databaseAction",
+                fields = "profile=$profile group=$groupToken selected=$selectedToken action=$databaseAction error=${selectionDebug.error(e)}",
+            )
+            selectionDebug.flush()
+            throw e
         }
+
+        return patched
     }
 
     override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) {

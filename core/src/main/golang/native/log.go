@@ -70,3 +70,8 @@ func subscribeLogcat(remote unsafe.Pointer) {
 
 	log.Infoln("[APP] Logcat level: %s", log.Level().String())
 }
+
+//export logAppDebug
+func logAppDebug(message C.c_string) {
+	log.Debugln("[APP][CMFA/SELECTION] %s", C.GoString(message))
+}

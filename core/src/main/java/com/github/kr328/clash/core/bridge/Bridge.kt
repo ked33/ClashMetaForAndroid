@@ -25,10 +25,12 @@ object Bridge {
     external fun nativeStopHttp()
     external fun nativeQueryGroupNames(excludeNotSelectable: Boolean): String
     external fun nativeQueryGroup(name: String, sort: String): String?
+    external fun nativeQuerySelectorNow(name: String): String?
     external fun nativeHealthCheck(completable: CompletableDeferred<Unit>, name: String)
     external fun nativeHealthCheckAll()
     external fun nativePatchSelector(selector: String, name: String): Boolean
     external fun nativeSetSelectorUpdateListener(callback: SelectorUpdateInterface?)
+    external fun nativeLogAppDebug(message: String)
     external fun nativeFetchAndValid(
         completable: FetchCallback,
         path: String,

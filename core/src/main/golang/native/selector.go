@@ -27,8 +27,8 @@ func init() {
 func notifySelectorUpdated(group, _ string) {
 	// REST callbacks run asynchronously; read the current value so an older callback
 	// cannot overwrite a newer selection when requests arrive in quick succession.
-	current := tunnel.QueryProxyGroup(group, tunnel.Default, nil)
-	if current == nil || current.Now == "" {
+	current, ok := tunnel.QuerySelectorNow(group)
+	if !ok || current == "" {
 		return
 	}
 
@@ -42,7 +42,7 @@ func notifySelectorUpdated(group, _ string) {
 	if C.selector_updated(
 		selectorUpdateListener,
 		C.CString(group),
-		C.CString(current.Now),
+		C.CString(current),
 	) != 0 {
 		log.Warnln("[APP] Persist selector update callback failed")
 	}

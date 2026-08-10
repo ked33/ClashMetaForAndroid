@@ -250,6 +250,10 @@
 
     <string name="show_traffic">Show Traffic</string>
     <string name="show_traffic_summary">Auto refresh traffic in notification</string>
+    <string name="selector_persistence_debug">Selector persistence debug log</string>
+    <string name="selector_persistence_debug_summary">Record detailed CMFA selector save and restore events in Logs (rate-limited; off by default)</string>
+    <string name="copy_all_logs">Copy all logs</string>
+    <string name="no_logs_to_copy">No logs to copy</string>
 
     <string name="follow_system_android_10">Follow System (Android 10+)</string>
     <string name="always_dark">Always Dark</string>

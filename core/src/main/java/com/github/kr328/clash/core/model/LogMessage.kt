@@ -17,6 +17,12 @@ data class LogMessage(
     val message: String,
     val time: Date,
 ) : Parcelable {
+    val sourceAndLevel: String
+        get() {
+            val source = if (message.startsWith(CMFA_LOG_PREFIX)) "CMFA" else "MIHOMO"
+            return "$source / ${level.name}"
+        }
+
     @Serializable
     enum class Level {
         @SerialName("debug")
@@ -42,6 +48,8 @@ data class LogMessage(
     }
 
     companion object {
+        private const val CMFA_LOG_PREFIX = "[APP][CMFA/"
+
         @JvmField
         val CREATOR = object : Parcelable.Creator<LogMessage> {
             override fun createFromParcel(parcel: Parcel): LogMessage {

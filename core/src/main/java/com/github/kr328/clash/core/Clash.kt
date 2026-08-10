@@ -119,6 +119,10 @@ object Clash {
             ?: ProxyGroup("Unknown", emptyList(), "")
     }
 
+    fun querySelectorNow(name: String): String? {
+        return Bridge.nativeQuerySelectorNow(name)
+    }
+
     fun healthCheck(name: String): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
             Bridge.nativeHealthCheck(this, name)
@@ -143,6 +147,10 @@ object Clash {
         }
 
         Bridge.nativeSetSelectorUpdateListener(callback)
+    }
+
+    fun logAppDebug(message: String) {
+        Bridge.nativeLogAppDebug(message)
     }
 
     fun fetchAndValid(

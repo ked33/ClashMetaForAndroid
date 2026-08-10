@@ -65,4 +65,9 @@ class ServiceStore(context: Context) {
         key = "dynamic_notification",
         defaultValue = true
     )
+
+    var selectorPersistenceDebug by store.boolean(
+        key = "selector_persistence_debug",
+        defaultValue = false
+    )
 }

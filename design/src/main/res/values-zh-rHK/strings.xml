@@ -64,6 +64,10 @@
     <string name="settings">設置</string>
     <string name="show_traffic">顯示流量</string>
     <string name="show_traffic_summary">在通知中自動刷新流量</string>
+    <string name="selector_persistence_debug">策略選擇持久化調試日誌</string>
+    <string name="selector_persistence_debug_summary">在日誌中記錄 CMFA 策略選擇儲存與還原的詳細事件（已限流，預設關閉）</string>
+    <string name="copy_all_logs">複製全部日誌</string>
+    <string name="no_logs_to_copy">沒有可複製的日誌</string>
     <string name="allow_clash_auto_restart">允許 Clash 自動重啓</string>
     <string name="auto_restart">自動重啓</string>
     <string name="stopped">已停止</string>

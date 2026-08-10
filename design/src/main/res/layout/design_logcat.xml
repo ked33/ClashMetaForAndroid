@@ -44,47 +44,55 @@
                     android:layout_centerVertical="true"
                     android:layout_toStartOf="@id/action_layout" />
 
-                <FrameLayout
+                <LinearLayout
                     android:id="@+id/action_layout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:visibility="@{streaming ? View.GONE : View.VISIBLE}">
-
-                        <ImageView
-                            android:layout_width="@dimen/item_tailing_component_size"
-                            android:layout_height="@dimen/item_tailing_component_size"
-                            android:layout_marginStart="@dimen/item_tailing_margin"
-                            android:background="?selectableItemBackgroundBorderless"
-                            android:clickable="true"
-                            android:contentDescription="@string/delete"
-                            android:focusable="true"
-                            android:onClick="@{() -> self.requests.offer(Request.Delete)}"
-                            android:padding="@dimen/toolbar_image_action_padding"
-                            android:src="@drawable/ic_baseline_delete" />
-
-                        <ImageView
-                            android:layout_width="@dimen/item_tailing_component_size"
-                            android:layout_height="@dimen/item_tailing_component_size"
-                            android:layout_marginStart="@dimen/item_tailing_margin"
-                            android:background="?selectableItemBackgroundBorderless"
-                            android:clickable="true"
-                            android:contentDescription="@string/export"
-                            android:focusable="true"
-                            android:onClick="@{() -> self.requests.offer(Request.Export)}"
-                            android:padding="@dimen/toolbar_image_action_padding"
-                            android:src="@drawable/ic_baseline_publish" />
-                    </LinearLayout>
+                    android:layout_centerVertical="true"
+                    android:orientation="horizontal">
 
                     <ImageView
                         android:layout_width="@dimen/item_tailing_component_size"
                         android:layout_height="@dimen/item_tailing_component_size"
-                        android:layout_gravity="end"
+                        android:layout_marginStart="@dimen/item_tailing_margin"
+                        android:background="?selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="@string/copy_all_logs"
+                        android:focusable="true"
+                        android:onClick="@{() -> self.copyAll()}"
+                        android:padding="@dimen/toolbar_image_action_padding"
+                        android:src="@drawable/ic_baseline_content_copy" />
+
+                    <ImageView
+                        android:layout_width="@dimen/item_tailing_component_size"
+                        android:layout_height="@dimen/item_tailing_component_size"
+                        android:layout_marginStart="@dimen/item_tailing_margin"
+                        android:background="?selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="@string/delete"
+                        android:focusable="true"
+                        android:onClick="@{() -> self.requests.offer(Request.Delete)}"
+                        android:padding="@dimen/toolbar_image_action_padding"
+                        android:src="@drawable/ic_baseline_delete"
+                        android:visibility="@{streaming ? View.GONE : View.VISIBLE}" />
+
+                    <ImageView
+                        android:layout_width="@dimen/item_tailing_component_size"
+                        android:layout_height="@dimen/item_tailing_component_size"
+                        android:layout_marginStart="@dimen/item_tailing_margin"
+                        android:background="?selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="@string/export"
+                        android:focusable="true"
+                        android:onClick="@{() -> self.requests.offer(Request.Export)}"
+                        android:padding="@dimen/toolbar_image_action_padding"
+                        android:src="@drawable/ic_baseline_publish"
+                        android:visibility="@{streaming ? View.GONE : View.VISIBLE}" />
+
+                    <ImageView
+                        android:layout_width="@dimen/item_tailing_component_size"
+                        android:layout_height="@dimen/item_tailing_component_size"
                         android:layout_marginStart="@dimen/item_tailing_margin"
                         android:background="?selectableItemBackgroundBorderless"
                         android:clickable="true"
@@ -94,7 +102,7 @@
                         android:padding="@dimen/toolbar_image_action_padding"
                         android:src="@drawable/ic_baseline_stop"
                         android:visibility="@{streaming ? View.VISIBLE : View.GONE}" />
-                </FrameLayout>
+                </LinearLayout>
 
             </RelativeLayout>
         </com.github.kr328.clash.design.view.ActivityBarLayout>
