@@ -62,8 +62,10 @@ class StatusProvider : ContentProvider() {
 
         private const val CLASH_SERVICE_RUNNING_FILE = "service_running.lock"
 
+        @Volatile
         var serviceRunning: Boolean = false
             set(value) {
+                currentProfile = null
                 field = value
 
                 shouldStartClashOnBoot = value
@@ -78,6 +80,8 @@ class StatusProvider : ContentProvider() {
                         delete()
                 }
             }
+
+        @Volatile
         var currentProfile: String? = null
     }
 }

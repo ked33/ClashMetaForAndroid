@@ -37,9 +37,10 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    suspend fun setClashRunning(running: Boolean) {
+    suspend fun setClashStatus(running: Boolean, profileLoaded: Boolean) {
         withContext(Dispatchers.Main) {
             binding.clashRunning = running
+            binding.profileLoaded = profileLoaded
         }
     }
 

@@ -9,6 +9,9 @@
             name="clashRunning"
             type="boolean" />
         <variable
+            name="profileLoaded"
+            type="boolean" />
+        <variable
             name="forwarded"
             type="String" />
         <variable
@@ -85,15 +88,15 @@
                     android:theme="@style/AppThemeDark"
                     app:cardBackgroundColor="@{clashRunning ? colorClashStarted : colorClashStopped}"
                     app:icon="@{clashRunning ? @drawable/ic_outline_check_circle : @drawable/ic_outline_not_interested}"
-                    app:subtext="@{clashRunning ? @string/format_traffic_forwarded(forwarded) : @string/tap_to_start}"
-                    app:text="@{clashRunning ? @string/running : @string/stopped}" />
+                    app:subtext="@{clashRunning ? (profileLoaded ? @string/format_traffic_forwarded(forwarded) : @string/loading) : @string/tap_to_start}"
+                    app:text="@{clashRunning ? (profileLoaded ? @string/running : @string/initializing) : @string/stopped}" />
 
                 <com.github.kr328.clash.design.view.LargeActionCard
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginVertical="@dimen/main_card_margin_vertical"
                     android:onClick="@{() -> self.request(Request.OpenProxy)}"
-                    android:visibility="@{clashRunning ? View.VISIBLE : View.GONE}"
+                    android:visibility="@{clashRunning &amp;&amp; profileLoaded ? View.VISIBLE : View.GONE}"
                     app:icon="@drawable/ic_baseline_apps"
                     app:subtext="@{mode}"
                     app:text="@string/proxy" />
@@ -112,7 +115,7 @@
                     android:layout_height="match_parent"
                     android:layout_marginVertical="@dimen/main_label_margin_vertical"
                     android:onClick="@{() -> self.request(Request.OpenProviders)}"
-                    android:visibility="@{clashRunning &amp;&amp; hasProviders ? View.VISIBLE : View.GONE}"
+                    android:visibility="@{clashRunning &amp;&amp; profileLoaded &amp;&amp; hasProviders ? View.VISIBLE : View.GONE}"
                     app:icon="@drawable/ic_baseline_swap_vertical_circle"
                     app:text="@string/providers" />
 

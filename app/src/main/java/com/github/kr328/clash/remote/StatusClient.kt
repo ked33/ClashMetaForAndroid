@@ -7,6 +7,14 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.StatusProvider
 
 class StatusClient(private val context: Context) {
+    data class ServiceStatus(
+        val running: Boolean,
+        val currentProfile: String?,
+    ) {
+        val profileLoaded: Boolean
+            get() = currentProfile != null
+    }
+
     private val uri: Uri
         get() {
             return Uri.Builder()
@@ -15,7 +23,7 @@ class StatusClient(private val context: Context) {
                 .build()
         }
 
-    fun currentProfile(): String? {
+    fun serviceStatus(): ServiceStatus {
         return try {
             val result = context.contentResolver.call(
                 uri,
@@ -24,11 +32,14 @@ class StatusClient(private val context: Context) {
                 null
             )
 
-            result?.getString("name")
+            ServiceStatus(
+                running = result != null,
+                currentProfile = result?.getString("name"),
+            )
         } catch (e: Exception) {
             Log.w("Query current profile: $e", e)
 
-            null
+            ServiceStatus(running = false, currentProfile = null)
         }
     }
 }

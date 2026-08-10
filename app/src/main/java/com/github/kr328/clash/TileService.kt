@@ -43,6 +43,7 @@ class TileService : TileService() {
             IntentFilter().apply {
                 addAction(Intents.ACTION_CLASH_STARTED)
                 addAction(Intents.ACTION_CLASH_STOPPED)
+                addAction(Intents.ACTION_PROFILE_LOADING)
                 addAction(Intents.ACTION_PROFILE_LOADED)
                 addAction(Intents.ACTION_SERVICE_RECREATED)
             },
@@ -50,10 +51,10 @@ class TileService : TileService() {
             null
         )
 
-        val name = StatusClient(this).currentProfile()
+        val status = StatusClient(this).serviceStatus()
 
-        clashRunning = name != null
-        currentProfile = name ?: ""
+        clashRunning = status.running
+        currentProfile = status.currentProfile ?: ""
 
         updateTile()
     }
@@ -95,8 +96,15 @@ class TileService : TileService() {
 
                     currentProfile = ""
                 }
+                Intents.ACTION_PROFILE_LOADING -> {
+                    clashRunning = true
+
+                    currentProfile = ""
+                }
                 Intents.ACTION_PROFILE_LOADED -> {
-                    currentProfile = StatusClient(this@TileService).currentProfile() ?: ""
+                    val status = StatusClient(this@TileService).serviceStatus()
+                    clashRunning = status.running
+                    currentProfile = status.currentProfile ?: ""
                 }
             }
 

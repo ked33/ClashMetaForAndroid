@@ -4,15 +4,26 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.design.ProvidersDesign
 import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.withClash
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R
 
 class ProvidersActivity : BaseActivity<ProvidersDesign>() {
     override suspend fun main() {
+        val ready = withContext(Dispatchers.IO) {
+            StatusClient(this@ProvidersActivity).serviceStatus().profileLoaded
+        }
+        if (!ready) {
+            finish()
+            return
+        }
+
         val providers = withClash { queryProviders().sorted() }
         val design = ProvidersDesign(this, providers)
 
@@ -24,6 +35,9 @@ class ProvidersActivity : BaseActivity<ProvidersDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
+                        Event.ProfileLoading,
+                        Event.ClashStop,
+                        Event.ServiceRecreated -> finish()
                         Event.ProfileLoaded -> {
                             val newList = withClash { queryProviders().sorted() }
 

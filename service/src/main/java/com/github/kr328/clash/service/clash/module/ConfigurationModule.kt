@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendProfileLoaded
+import com.github.kr328.clash.service.util.sendProfileLoading
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -89,11 +90,13 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 val cycle = SystemClock.elapsedRealtime().toString()
                 activeDebugCycle = cycle
                 activeDebugStage = stage
+                StatusProvider.currentProfile = null
+                service.sendProfileLoading(current)
 
                 selectionDebug.summary(
                     name = "load_start",
                     dedupeKey = "$profile|$cycle",
-                    fields = "cycle=$cycle profile=$profile requested=${selectionDebug.profile(changed)}",
+                    fields = "cycle=$cycle profile=$profile requested=${selectionDebug.profile(changed)} ready=false",
                 )
 
                 stage = "query_imported_profile"
@@ -234,7 +237,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 selectionDebug.summary(
                     name = "load_complete",
                     dedupeKey = "$profile|$cycle",
-                    fields = "cycle=$cycle profile=$profile",
+                    fields = "cycle=$cycle profile=$profile ready=true",
                 )
                 selectionDebug.flush()
 

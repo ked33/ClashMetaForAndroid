@@ -5,15 +5,26 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.ProxyDesign
 import com.github.kr328.clash.design.model.ProxyState
+import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.withClash
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 
 class ProxyActivity : BaseActivity<ProxyDesign>() {
     override suspend fun main() {
+        val ready = withContext(Dispatchers.IO) {
+            StatusClient(this@ProxyActivity).serviceStatus().profileLoaded
+        }
+        if (!ready) {
+            finish()
+            return
+        }
+
         val mode = withClash { queryOverride(Clash.OverrideSlot.Session).mode }
         val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
         val states = List(names.size) { ProxyState("?") }
@@ -36,6 +47,9 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
+                        Event.ProfileLoading,
+                        Event.ClashStop,
+                        Event.ServiceRecreated -> finish()
                         Event.ProfileLoaded -> {
                             val newNames = withClash {
                                 queryProxyGroupNames(uiStore.proxyExcludeNotSelectable)

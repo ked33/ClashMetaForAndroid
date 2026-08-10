@@ -18,6 +18,7 @@ class Broadcasts(private val context: Application) {
         fun onProfileChanged()
         fun onProfileUpdateCompleted(uuid: UUID?)
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
+        fun onProfileLoading()
         fun onProfileLoaded()
     }
 
@@ -67,7 +68,16 @@ class Broadcasts(private val context: Application) {
                             UUID.fromString(intent.getStringExtra(Intents.EXTRA_UUID)),
                             intent.getStringExtra(Intents.EXTRA_FAIL_REASON))
                     }
+                Intents.ACTION_PROFILE_LOADING -> {
+                    clashRunning = true
+
+                    receivers.forEach {
+                        it.onProfileLoading()
+                    }
+                }
                 Intents.ACTION_PROFILE_LOADED -> {
+                    clashRunning = true
+
                     receivers.forEach {
                         it.onProfileLoaded()
                     }
@@ -96,10 +106,13 @@ class Broadcasts(private val context: Application) {
                 addAction(Intents.ACTION_PROFILE_CHANGED)
                 addAction(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
                 addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
+                addAction(Intents.ACTION_PROFILE_LOADING)
                 addAction(Intents.ACTION_PROFILE_LOADED)
             })
 
-            clashRunning = StatusClient(context).currentProfile() != null
+            val status = StatusClient(context).serviceStatus()
+            clashRunning = status.running
+            registered = true
         } catch (e: Exception) {
             Log.w("Register global receiver: $e", e)
         }
@@ -111,10 +124,11 @@ class Broadcasts(private val context: Application) {
 
         try {
             context.unregisterReceiver(broadcastReceiver)
-
-            clashRunning = false
         } catch (e: Exception) {
             Log.w("Unregister global receiver: $e", e)
+        } finally {
+            clashRunning = false
+            registered = false
         }
     }
 }

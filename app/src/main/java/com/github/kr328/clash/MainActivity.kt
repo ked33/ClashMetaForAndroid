@@ -17,6 +17,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -46,24 +47,40 @@ class MainActivity : BaseActivity<MainDesign>() {
                         Event.ActivityStart,
                         Event.ServiceRecreated,
                         Event.ClashStop, Event.ClashStart,
-                        Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
+                        Event.ProfileLoading, Event.ProfileLoaded,
+                        Event.ProfileChanged -> design.fetch()
                         else -> Unit
                     }
                 }
                 design.requests.onReceive {
                     when (it) {
                         MainDesign.Request.ToggleStatus -> {
-                            if (clashRunning)
+                            val running = withContext(Dispatchers.IO) {
+                                StatusClient(this@MainActivity).serviceStatus().running
+                            }
+                            if (running)
                                 stopClashService()
                             else
                                 design.startClash()
                         }
-                        MainDesign.Request.OpenProxy ->
-                            startActivity(ProxyActivity::class.intent)
+                        MainDesign.Request.OpenProxy -> {
+                            val ready = withContext(Dispatchers.IO) {
+                                StatusClient(this@MainActivity).serviceStatus().profileLoaded
+                            }
+                            if (ready) {
+                                startActivity(ProxyActivity::class.intent)
+                            }
+                        }
                         MainDesign.Request.OpenProfiles ->
                             startActivity(ProfilesActivity::class.intent)
-                        MainDesign.Request.OpenProviders ->
-                            startActivity(ProvidersActivity::class.intent)
+                        MainDesign.Request.OpenProviders -> {
+                            val ready = withContext(Dispatchers.IO) {
+                                StatusClient(this@MainActivity).serviceStatus().profileLoaded
+                            }
+                            if (ready) {
+                                startActivity(ProvidersActivity::class.intent)
+                            }
+                        }
                         MainDesign.Request.OpenLogs -> {
                             if (LogcatService.running) {
                                 startActivity(LogcatActivity::class.intent)
@@ -89,17 +106,24 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private suspend fun MainDesign.fetch() {
-        setClashRunning(clashRunning)
-
-        val state = withClash {
-            queryTunnelState()
+        val status = withContext(Dispatchers.IO) {
+            StatusClient(this@MainActivity).serviceStatus()
         }
-        val providers = withClash {
-            queryProviders()
-        }
+        setClashStatus(status.running, status.profileLoaded)
 
-        setMode(state.mode)
-        setHasProviders(providers.isNotEmpty())
+        if (status.profileLoaded) {
+            val state = withClash {
+                queryTunnelState()
+            }
+            val providers = withClash {
+                queryProviders()
+            }
+
+            setMode(state.mode)
+            setHasProviders(providers.isNotEmpty())
+        } else {
+            setHasProviders(false)
+        }
 
         withProfile {
             setProfileName(queryActive()?.name)

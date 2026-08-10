@@ -170,6 +170,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileLoaded)
     }
 
+    override fun onProfileLoading() {
+        events.trySend(Event.ProfileLoading)
+    }
+
     override fun onServiceRecreated() {
         events.trySend(Event.ServiceRecreated)
     }
@@ -226,6 +230,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ActivityStop,
         ClashStop,
         ClashStart,
+        ProfileLoading,
         ProfileLoaded,
         ProfileChanged,
         ProfileUpdateCompleted,
