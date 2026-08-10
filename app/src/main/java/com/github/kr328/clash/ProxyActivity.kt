@@ -36,6 +36,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
             this,
             mode,
             names,
+            states,
             uiStore
         )
 

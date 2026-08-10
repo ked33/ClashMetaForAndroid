@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>
+        <variable
+            name="groupName"
+            type="String" />
+        <variable
+            name="summary"
+            type="String" />
+        <variable
+            name="selected"
+            type="boolean" />
+    </data>
+
+    <RelativeLayout
+        android:id="@+id/root_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="@dimen/item_min_height"
+        android:paddingStart="@dimen/dialog_padding">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toStartOf="@id/selected_view"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@{groupName}"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_text_margin"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@{summary}"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+        </LinearLayout>
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/selected_view"
+            android:layout_width="@dimen/proxy_group_navigation_action_size"
+            android:layout_height="@dimen/proxy_group_navigation_action_size"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:checked="@{selected}"
+            android:clickable="false"
+            android:focusable="false"
+            android:gravity="center" />
+    </RelativeLayout>
+</layout>

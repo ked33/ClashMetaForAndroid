@@ -56,6 +56,14 @@
     <string name="profiles">設定檔</string>
     <string name="properties">性質</string>
     <string name="proxy">Proxy</string>
+    <string name="proxy_groups">策略組</string>
+    <string name="search_proxy_groups">搜尋策略組</string>
+    <string name="no_matching_proxy_groups">沒有符合的策略組</string>
+    <string name="previous_proxy_group">上一個策略組</string>
+    <string name="next_proxy_group">下一個策略組</string>
+    <string name="format_group_position">%1$d / %2$d</string>
+    <string name="format_current_proxy">目前：%s</string>
+    <string name="format_proxy_group_description">%1$s，%2$s，第 %3$d 個，共 %4$d 個</string>
     <string name="recently">最近</string>
     <string name="route_system_traffic">自動轉送作業系統流量</string>
     <string name="routing_via_vpn_service">通過 VpnService 自動轉送所有作業系統流量</string>

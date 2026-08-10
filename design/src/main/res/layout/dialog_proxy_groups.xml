@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/toolbar_height"
+            android:paddingStart="@dimen/dialog_padding">
+
+            <TextView
+                android:id="@+id/title_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:layout_toStartOf="@id/group_count_view"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/proxy_groups"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
+
+            <TextView
+                android:id="@+id/group_count_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginHorizontal="@dimen/item_midden_margin"
+                android:layout_toStartOf="@id/close_view"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+
+            <ImageView
+                android:id="@+id/close_view"
+                android:layout_width="@dimen/proxy_group_navigation_action_size"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/close"
+                android:focusable="true"
+                android:padding="12dp"
+                android:src="@drawable/ic_baseline_close" />
+        </RelativeLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/dialog_padding"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/search_proxy_groups"
+            app:endIconMode="clear_text"
+            app:startIconDrawable="@drawable/ic_baseline_search">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/keyword_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                android:inputType="text"
+                android:maxLines="1" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <com.github.kr328.clash.design.view.AppRecyclerView
+                android:id="@+id/main_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="@dimen/dialog_padding" />
+
+            <TextView
+                android:id="@+id/empty_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/no_matching_proxy_groups"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+</layout>

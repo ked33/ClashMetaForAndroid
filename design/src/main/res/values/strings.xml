@@ -14,6 +14,14 @@
     <string name="rule_mode">Rule Mode</string>
     <string name="global_mode">Global Mode</string>
     <string name="proxy_empty_tips">No groups can be displayed</string>
+    <string name="proxy_groups">Proxy groups</string>
+    <string name="search_proxy_groups">Search proxy groups</string>
+    <string name="no_matching_proxy_groups">No matching proxy groups</string>
+    <string name="previous_proxy_group">Previous proxy group</string>
+    <string name="next_proxy_group">Next proxy group</string>
+    <string name="format_group_position">%1$d / %2$d</string>
+    <string name="format_current_proxy">Current: %s</string>
+    <string name="format_proxy_group_description">%1$s, %2$s, %3$d of %4$d</string>
 
     <string name="profiles">Profiles</string>
     <string name="not_selected">Not selected</string>

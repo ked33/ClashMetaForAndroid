@@ -60,6 +60,14 @@
     <string name="profiles">配置</string>
     <string name="properties">参数</string>
     <string name="proxy">代理</string>
+    <string name="proxy_groups">策略组</string>
+    <string name="search_proxy_groups">查找策略组</string>
+    <string name="no_matching_proxy_groups">没有匹配的策略组</string>
+    <string name="previous_proxy_group">上一个策略组</string>
+    <string name="next_proxy_group">下一个策略组</string>
+    <string name="format_group_position">%1$d / %2$d</string>
+    <string name="format_current_proxy">当前：%s</string>
+    <string name="format_proxy_group_description">%1$s，%2$s，第 %3$d 个，共 %4$d 个</string>
     <string name="recently">近期</string>
     <string name="route_system_traffic">自动路由系统流量</string>
     <string name="routing_via_vpn_service">通过 VpnService 自动路由所有系统流量</string>
