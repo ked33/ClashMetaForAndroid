@@ -1,15 +1,27 @@
 name: Build Release
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "fastlane/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "NOTICE"
+      - "PRIVACY_POLICY.md"
+      - "docs/**"
   workflow_dispatch:
     inputs:
       release-tag:
-        description: "Release Tag (v2.x.x)"
-        required: true
+        description: "Release Tag (v2.x.x). Leave empty on manual run to auto-version."
+        required: false
+        default: ""
 
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  group: release-main
+  cancel-in-progress: true
 
 jobs:
   BuildRelease:
@@ -73,15 +85,34 @@ jobs:
             ${{ runner.os }}-android-sdk-ndk29-
             ${{ runner.os }}-android-sdk-
 
-      - name: Convert and set version env
+      - name: Resolve version
         id: process-version
         run: |
-          VERSION_TAG=${{ inputs.release-tag }}
-          VERSION_TAG=${VERSION_TAG#v}
-          IFS='.' read -ra VERSION_PARTS <<< "$VERSION_TAG"
-          VERSION_CODE=$(printf "%1d%02d%03d" "${VERSION_PARTS[0]}" "${VERSION_PARTS[1]}" "${VERSION_PARTS[2]}")
-          echo "versonName=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          BASE_NAME=$(grep -E '^\s*versionName\s*=' build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          BASE_CODE=$(grep -E '^\s*versionCode\s*=' build.gradle.kts | head -n1 | sed -E 's/[^0-9]//g')
+          INPUT_TAG="${{ github.event.inputs.release-tag }}"
+
+          if [ -n "${INPUT_TAG:-}" ]; then
+            VERSION_TAG=${INPUT_TAG#v}
+            IFS='.' read -ra VERSION_PARTS <<< "$VERSION_TAG"
+            VERSION_CODE=$(printf "%1d%02d%03d" "${VERSION_PARTS[0]}" "${VERSION_PARTS[1]}" "${VERSION_PARTS[2]}")
+            VERSION_NAME="$VERSION_TAG"
+            RELEASE_TAG="v${VERSION_NAME}"
+            COMMIT_BUMP=true
+          else
+            # push / 手动空 tag：正式 meta 版，versionCode 用 run_number 保证可覆盖更新
+            VERSION_NAME="${BASE_NAME}.${GITHUB_RUN_NUMBER}"
+            VERSION_CODE=$((BASE_CODE * 1000 + GITHUB_RUN_NUMBER))
+            RELEASE_TAG="v${VERSION_NAME}"
+            COMMIT_BUMP=false
+          fi
+
+          echo "versonName=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "versonCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "releaseTag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "commitBump=$COMMIT_BUMP" >> "$GITHUB_OUTPUT"
+          echo "Resolved versionName=$VERSION_NAME versionCode=$VERSION_CODE tag=$RELEASE_TAG"
 
       - name: Re-write version
         uses: Devofure/advance-android-version-actions@v1.5
@@ -90,17 +121,18 @@ jobs:
           versionCode: ${{ steps.process-version.outputs.versonCode }}
           versionName: ${{ steps.process-version.outputs.versonName }}
 
-      - name: Commit and push if changes
+      - name: Commit and push version bump (manual tagged release only)
+        if: steps.process-version.outputs.commitBump == 'true'
         run: |
-          changes=$(git diff --name-only origin/main | wc -l)
+          changes=$(git diff --name-only | wc -l)
           if [ "$changes" -gt 0 ]; then
             newVersionName=${{ steps.process-version.outputs.versonName }}
             newVersionCode=${{ steps.process-version.outputs.versonCode }}
             git config --global user.name 'GitHub Action'
             git config --global user.email 'action@github.com'
             git add build.gradle.kts
-            git commit -am "Bump version to $newVersionName ($newVersionCode)"
-            git tag "v$newVersionName"
+            git commit -m "Bump version to $newVersionName ($newVersionCode)"
+            git tag "${{ steps.process-version.outputs.releaseTag }}"
             git push --follow-tags
           fi
 
@@ -112,13 +144,11 @@ jobs:
 
       - name: Prepare app config (arm64-only + custom package)
         run: |
-          cat > local.properties <<'EOF'
-          custom.application.id=com.ked33.clash
-          remove.suffix=true
-          abi.filters=arm64-v8a
-          EOF
-          sed -i 's/^[[:space:]]*//' local.properties
-          echo "local.properties:"
+          printf '%s\n' \
+            'custom.application.id=com.ked33.clash' \
+            'remove.suffix=true' \
+            'abi.filters=arm64-v8a' \
+            > local.properties
           cat local.properties
 
       - name: Prepare signing
@@ -143,7 +173,7 @@ jobs:
           } > signing.properties
           echo "Signing materials prepared (passwords not printed)."
 
-      - name: Release Build (arm64-v8a only)
+      - name: Release Build (meta / arm64-v8a only)
         run: ./gradlew --no-daemon --build-cache app:assembleMetaRelease
 
       - name: Collect arm64 APK
@@ -156,20 +186,25 @@ jobs:
           echo "name=$(basename "$APK")" >> "$GITHUB_OUTPUT"
           ls -lh "$APK"
 
-      - name: Tag Repo
-        uses: richardsimko/update-tag@v1
+      - name: Delete legacy Prerelease-alpha (cleanup)
+        uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
-          tag_name: ${{ inputs.release-tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: Prerelease-alpha
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: true
+        continue-on-error: true
 
-      - name: Upload Release
+      - name: Upload formal Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release-tag }}
-          name: Release ${{ inputs.release-tag }} (arm64-v8a)
+          tag_name: ${{ steps.process-version.outputs.releaseTag }}
+          name: Release ${{ steps.process-version.outputs.releaseTag }} (arm64-v8a)
           files: ${{ steps.apk.outputs.path }}
+          prerelease: false
+          make_latest: true
           generate_release_notes: true
           body: |
-            Signed release build (**arm64-v8a only**).
-            Package ID: `com.ked33.clash`
+            Formal **meta** release (signed, **arm64-v8a only**).
+            - Package ID: `com.ked33.clash`
+            - versionName: `${{ steps.process-version.outputs.versonName }}`
+            - versionCode: `${{ steps.process-version.outputs.versonCode }}`

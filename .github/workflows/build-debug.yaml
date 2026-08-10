@@ -80,12 +80,12 @@ jobs:
           EOF
           sed -i 's/^[[:space:]]*//' local.properties
 
-      - name: Build (unsigned / debug-fallback, arm64 only)
-        run: ./gradlew --no-daemon --build-cache app:assembleAlphaRelease
+      - name: Build (meta, arm64 only; debug signing fallback if no secrets)
+        run: ./gradlew --no-daemon --build-cache app:assembleMetaRelease
 
       - name: Upload Artifact (arm64-v8a)
         uses: actions/upload-artifact@v7
         with:
           name: CMFA Debug APK (arm64-v8a)
-          path: app/build/outputs/apk/alpha/release/*.apk
+          path: app/build/outputs/apk/meta/release/*.apk
           if-no-files-found: error

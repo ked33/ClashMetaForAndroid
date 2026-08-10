@@ -57,9 +57,9 @@ Feature of [Clash.Meta](https://github.com/MetaCubeX/Clash.Meta)
 
 ### Fork / self-hosted CI (ked33)
 
-Signed cloud builds, **arm64-v8a only**, publish to GitHub Releases, custom package `com.ked33.clash`.
+Push to `main` → **Build Release** auto-builds **meta formal** APK (arm64-v8a only, signed) and publishes a **non-prerelease** GitHub Release. Package: `com.ked33.clash`.
 
-See **[docs/SIGNING_AND_CI.md](docs/SIGNING_AND_CI.md)** for Secrets, keystore backup, and workflow usage.
+See **[docs/SIGNING_AND_CI.md](docs/SIGNING_AND_CI.md)**.
 
 ### Automation
 
