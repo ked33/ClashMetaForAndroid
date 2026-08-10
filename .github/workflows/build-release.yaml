@@ -4,18 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       release-tag:
-        description: 'Release Tag (v2.x.x)'
+        description: "Release Tag (v2.x.x)"
         required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   BuildRelease:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      
+
       - name: Checkout submodules
         run: git submodule update --init --recursive --force
 
@@ -27,19 +33,25 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: false
 
       - name: Setup Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
-          go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
-          go-version: '1.26'
+          go-download-base-url: "https://github.com/MetaCubeX/go/releases/download/build"
+          go-version: "1.26"
+          cache: false
 
       - name: Apply Patches
         run: |
-          cd $(go env GOROOT)
-          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
+          cd "$(go env GOROOT)"
+          for p in "$GITHUB_WORKSPACE"/.github/patch/*.patch; do
+            patch --verbose -p 1 < "$p"
+          done
 
-      - uses: actions/cache@v5
+      - name: Cache Go build
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go-build
@@ -47,32 +59,41 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      
+
+      - name: Cache Android SDK / NDK
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/ndk
+            /usr/local/lib/android/sdk/cmake
+            /usr/local/lib/android/sdk/build-tools
+            /usr/local/lib/android/sdk/platforms
+          key: ${{ runner.os }}-android-sdk-ndk29-cmake-${{ hashFiles('**/build.gradle.kts', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-ndk29-
+            ${{ runner.os }}-android-sdk-
+
       - name: Convert and set version env
         id: process-version
         run: |
           VERSION_TAG=${{ inputs.release-tag }}
-          VERSION_TAG=${VERSION_TAG#v}                              # remove the 'v' prefix
-          IFS='.' read -ra VERSION_PARTS <<< "$VERSION_TAG"         # split into array
+          VERSION_TAG=${VERSION_TAG#v}
+          IFS='.' read -ra VERSION_PARTS <<< "$VERSION_TAG"
           VERSION_CODE=$(printf "%1d%02d%03d" "${VERSION_PARTS[0]}" "${VERSION_PARTS[1]}" "${VERSION_PARTS[2]}")
-          
-          echo "versonName=$VERSION_TAG" >> $GITHUB_OUTPUT          # "1.2.3"
-          echo "versonCode=$VERSION_CODE" >> $GITHUB_OUTPUT         # "102003"
-      
-      # Re-write version in build.gradle.kts
+          echo "versonName=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+          echo "versonCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
       - name: Re-write version
         uses: Devofure/advance-android-version-actions@v1.5
         with:
           gradlePath: build.gradle.kts
           versionCode: ${{ steps.process-version.outputs.versonCode }}
           versionName: ${{ steps.process-version.outputs.versonName }}
-      
-      # If any change found, commit it and push
+
       - name: Commit and push if changes
         run: |
           changes=$(git diff --name-only origin/main | wc -l)
-          if [ $changes -gt 0 ]
-          then
+          if [ "$changes" -gt 0 ]; then
             newVersionName=${{ steps.process-version.outputs.versonName }}
             newVersionCode=${{ steps.process-version.outputs.versonCode }}
             git config --global user.name 'GitHub Action'
@@ -85,27 +106,55 @@ jobs:
 
       - name: Update CA
         run: |
-          sudo apt-get update && sudo apt-get install ca-certificates
+          sudo apt-get update && sudo apt-get install -y ca-certificates
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
-      - name: Signing properties
+      - name: Prepare app config (arm64-only + custom package)
+        run: |
+          cat > local.properties <<'EOF'
+          custom.application.id=com.ked33.clash
+          remove.suffix=true
+          abi.filters=arm64-v8a
+          EOF
+          sed -i 's/^[[:space:]]*//' local.properties
+          echo "local.properties:"
+          cat local.properties
+
+      - name: Prepare signing
         env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          touch signing.properties
-          echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
-          echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
-          echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
-            
-          echo "cat signing.properties"
-          cat signing.properties
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ] || [ -z "${SIGNING_STORE_PASSWORD:-}" ] || [ -z "${SIGNING_KEY_ALIAS:-}" ] || [ -z "${SIGNING_KEY_PASSWORD:-}" ]; then
+            echo "::error::Missing signing secrets. Required: KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          test -s release.keystore
+          {
+            echo "keystore.path=release.keystore"
+            echo "keystore.password=${SIGNING_STORE_PASSWORD}"
+            echo "key.alias=${SIGNING_KEY_ALIAS}"
+            echo "key.password=${SIGNING_KEY_PASSWORD}"
+          } > signing.properties
+          echo "Signing materials prepared (passwords not printed)."
 
-      - name: Release Build
-        if: success()
-        run: ./gradlew --no-daemon app:assembleMetaRelease
+      - name: Release Build (arm64-v8a only)
+        run: ./gradlew --no-daemon --build-cache app:assembleMetaRelease
+
+      - name: Collect arm64 APK
+        id: apk
+        run: |
+          set -euo pipefail
+          APK=$(ls -1 app/build/outputs/apk/meta/release/*.apk | head -n 1)
+          test -n "$APK"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$APK")" >> "$GITHUB_OUTPUT"
+          ls -lh "$APK"
 
       - name: Tag Repo
         uses: richardsimko/update-tag@v1
@@ -115,19 +164,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v1
-        if: ${{ success() }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release-tag }}
-          files: app/build/outputs/apk/meta/release/*
+          name: Release ${{ inputs.release-tag }} (arm64-v8a)
+          files: ${{ steps.apk.outputs.path }}
           generate_release_notes: true
-
-      - name: Release Changelog Builder
-        uses: mikepenz/release-changelog-builder-action@v4.1.1
-        with:
-          configurationJson: |
-            {
-              "ignore_labels": [
-                "Update"
-              ],
-            }
+          body: |
+            Signed release build (**arm64-v8a only**).
+            Package ID: `com.ked33.clash`

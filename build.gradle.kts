@@ -64,13 +64,21 @@ subprojects {
             resValue("string", "release_name", "v$versionName")
             resValue("integer", "release_code", "$versionCode")
 
+            val abiList = (queryConfigProperty("abi.filters") as? String)
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+
             ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                abiFilters.clear()
+                abiFilters += abiList
             }
 
             externalNativeBuild {
                 cmake {
-                    abiFilters("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    abiFilters(*abiList.toTypedArray())
                 }
             }
 
@@ -144,17 +152,22 @@ subprojects {
         }
 
         signingConfigs {
-            val keystore = rootProject.file("signing.properties")
-            if (keystore.exists()) {
+            val signingPropsFile = rootProject.file("signing.properties")
+            if (signingPropsFile.exists()) {
                 create("release") {
                     val prop = Properties().apply {
-                        keystore.inputStream().use(this::load)
+                        signingPropsFile.inputStream().use(this::load)
                     }
-
-                    storeFile = rootProject.file("release.keystore")
-                    storePassword = prop.getProperty("keystore.password")!!
-                    keyAlias = prop.getProperty("key.alias")!!
-                    keyPassword = prop.getProperty("key.password")!!
+                    val storePath = prop.getProperty("keystore.path") ?: "release.keystore"
+                    storeFile = rootProject.file(storePath)
+                    storePassword = prop.getProperty("keystore.password")
+                        ?: error("keystore.password missing in signing.properties")
+                    keyAlias = prop.getProperty("key.alias")
+                        ?: error("key.alias missing in signing.properties")
+                    keyPassword = prop.getProperty("key.password")
+                        ?: error("key.password missing in signing.properties")
+                    enableV1Signing = true
+                    enableV2Signing = true
                 }
             }
         }
@@ -183,12 +196,20 @@ subprojects {
         if (isApp) {
             this as AppExtension
 
+            val abiList = (queryConfigProperty("abi.filters") as? String)
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+
             splits {
                 abi {
-                    isEnable = true
-                    isUniversalApk = true
+                    // Single-ABI CI builds skip splits for a smaller/faster APK.
+                    isEnable = abiList.size > 1
+                    isUniversalApk = abiList.size > 1
                     reset()
-                    include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    include(*abiList.toTypedArray())
                 }
             }
         }

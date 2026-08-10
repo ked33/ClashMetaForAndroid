@@ -30,10 +30,12 @@ gradle-app.setting
 # Ignore builtin geofiles
 app/src/main/assets
 
-# KeyStore
+# KeyStore / signing material (never commit)
 signing.properties
 *.keystore
 *.jks
+keystore.b64.txt
+*.b64.txt
 
 # clion cmake build
 cmake-build-*

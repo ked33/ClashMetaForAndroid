@@ -55,9 +55,15 @@ Feature of [Clash.Meta](https://github.com/MetaCubeX/Clash.Meta)
    ./gradlew app:assembleAlphaRelease
    ```
 
+### Fork / self-hosted CI (ked33)
+
+Signed cloud builds, **arm64-v8a only**, publish to GitHub Releases, custom package `com.ked33.clash`.
+
+See **[docs/SIGNING_AND_CI.md](docs/SIGNING_AND_CI.md)** for Secrets, keystore backup, and workflow usage.
+
 ### Automation
 
-APP package name is `com.github.metacubex.clash.meta`
+APP package name is `com.github.metacubex.clash.meta` (upstream default; fork CI overrides via `local.properties`)
 
 - Toggle Clash.Meta service status
   - Send intent to activity `com.github.kr328.clash.ExternalControlActivity` with action `com.github.metacubex.clash.meta.action.TOGGLE_CLASH`
