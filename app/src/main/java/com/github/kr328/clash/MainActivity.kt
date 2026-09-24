@@ -168,7 +168,28 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun queryAppVersionName(): String {
         return withContext(Dispatchers.IO) {
-            packageManager.getPackageInfo(packageName, 0).versionName + "\n" + Bridge.nativeCoreVersion().replace("_", "-")
+            val raw = packageManager.getPackageInfo(packageName, 0).versionName
+                ?.removeSuffix(".Meta")
+                ?.removeSuffix(".Alpha")
+                ?: "unknown"
+            val version = if (raw.startsWith("v") || raw.startsWith("V")) raw else "v$raw"
+            val parts = Bridge.nativeCoreVersion().split('\n')
+            val cmfaCommit = parts.getOrNull(0)?.take(7).orEmpty().ifEmpty { "unknown" }
+            val coreVersion = parts.getOrNull(1).orEmpty().ifEmpty { "unknown" }
+            val coreCommit = parts.getOrNull(2)?.take(7).orEmpty().ifEmpty { "unknown" }
+
+            "CMFA: $version (${installedAbi()}) - $cmfaCommit\nCore: $coreVersion - $coreCommit"
+        }
+    }
+
+    private fun installedAbi(): String {
+        val name = applicationInfo.nativeLibraryDir.substringAfterLast('/')
+        return when (name) {
+            "arm64" -> "arm64-v8a"
+            "arm" -> "armeabi-v7a"
+            "x86_64" -> "x86_64"
+            "x86" -> "x86"
+            else -> Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
         }
     }
 

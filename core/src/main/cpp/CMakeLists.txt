@@ -39,6 +39,68 @@ message(STATUS "version info = ${GIT_VERSION}")
 # 去除空格
 string(REGEX REPLACE "[ ]+" "" GIT_VERSION "${GIT_VERSION}")
 
+execute_process(
+  COMMAND git rev-parse --show-toplevel
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE REPO_ROOT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+set(CORE_DIR "${REPO_ROOT}/core/src/foss/golang/clash")
+
+execute_process(
+  COMMAND git -C "${REPO_ROOT}" rev-parse --short=7 HEAD
+  OUTPUT_VARIABLE CMFA_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(LENGTH "${CMFA_COMMIT}" CMFA_COMMIT_LEN)
+if (CMFA_COMMIT_LEN GREATER 6)
+  string(SUBSTRING "${CMFA_COMMIT}" 0 7 CMFA_COMMIT)
+else()
+  set(CMFA_COMMIT "unknown")
+endif()
+
+execute_process(
+  COMMAND git -C "${CORE_DIR}" rev-parse --short=7 HEAD
+  OUTPUT_VARIABLE CORE_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(LENGTH "${CORE_COMMIT}" CORE_COMMIT_LEN)
+if (CORE_COMMIT_LEN GREATER 6)
+  string(SUBSTRING "${CORE_COMMIT}" 0 7 CORE_COMMIT)
+else()
+  set(CORE_COMMIT "unknown")
+endif()
+
+execute_process(
+  COMMAND git -C "${CORE_DIR}" tag --points-at HEAD --sort=-v:refname
+  OUTPUT_VARIABLE CORE_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(REGEX MATCH "^[^\r\n]+" CORE_VERSION "${CORE_VERSION}")
+if (CORE_VERSION STREQUAL "")
+  execute_process(
+    COMMAND git -C "${CORE_DIR}" describe --tags --abbrev=0 HEAD
+    OUTPUT_VARIABLE CORE_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+if (CORE_VERSION STREQUAL "")
+  set(CORE_VERSION "unknown")
+elseif (NOT CORE_VERSION MATCHES "^[vV]")
+  set(CORE_VERSION "v${CORE_VERSION}")
+endif()
+
+if (CMFA_COMMIT STREQUAL "")
+  set(CMFA_COMMIT "unknown")
+endif()
+if (CORE_COMMIT STREQUAL "")
+  set(CORE_COMMIT "unknown")
+endif()
+
+message(STATUS "about version = CMFA ${CMFA_COMMIT}, core ${CORE_VERSION} ${CORE_COMMIT}")
+
 # 保存变量到文件
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in ${CMAKE_CURRENT_SOURCE_DIR}/version.h @ONLY)
 

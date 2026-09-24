@@ -667,7 +667,5 @@ JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeCoreVersion(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
     
-    char* Version = make_String(GIT_VERSION);
-
-    return new_string(Version);
+    return new_string(CMFA_COMMIT "\n" CORE_VERSION "\n" CORE_COMMIT);
 }

@@ -6,6 +6,9 @@
  */
  
 #define GIT_VERSION @GIT_VERSION@
+#define CMFA_COMMIT "@CMFA_COMMIT@"
+#define CORE_VERSION "@CORE_VERSION@"
+#define CORE_COMMIT "@CORE_COMMIT@"
 #define make_Str(x) #x 
 #define make_String(x) make_Str(x)
 
