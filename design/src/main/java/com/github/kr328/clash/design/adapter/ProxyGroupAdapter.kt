@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.databinding.AdapterProxyGroupBinding
 import com.github.kr328.clash.design.model.ProxyState
+import com.github.kr328.clash.design.util.getPixels
 import com.github.kr328.clash.design.util.layoutInflater
 
 class ProxyGroupAdapter(
@@ -19,6 +20,7 @@ class ProxyGroupAdapter(
 
     private var selectedIndex = selectedIndex
     private var keyword = ""
+    private var columnCount = 1
     private var visibleIndices: List<Int> = groupNames.indices.toList()
 
     init {
@@ -31,6 +33,14 @@ class ProxyGroupAdapter(
         notifyDataSetChanged()
 
         return visibleIndices.isEmpty()
+    }
+
+    fun setColumnCount(columns: Int) {
+        val normalized = columns.coerceIn(1, 3)
+        if (columnCount == normalized) return
+
+        columnCount = normalized
+        notifyDataSetChanged()
     }
 
     fun select(index: Int) {
@@ -70,6 +80,7 @@ class ProxyGroupAdapter(
             groupName = groupNames[index]
             summary = selectionSummary(index)
             this.selected = index == selectedIndex
+            applyColumnChrome()
             root.setOnClickListener {
                 requestSelection(index)
             }
@@ -99,6 +110,38 @@ class ProxyGroupAdapter(
     private fun notifyOriginalItemChanged(index: Int) {
         val position = visibleIndices.indexOf(index)
         if (position >= 0) notifyItemChanged(position)
+    }
+
+    private fun AdapterProxyGroupBinding.applyColumnChrome() {
+        val singleColumn = columnCount == 1
+        val horizontalPadding = context.getPixels(
+            if (singleColumn) R.dimen.dialog_padding else R.dimen.proxy_group_grid_padding
+        )
+        val indicatorSize = context.getPixels(
+            if (singleColumn) {
+                R.dimen.proxy_group_navigation_action_size
+            } else {
+                R.dimen.proxy_group_column_indicator_size
+            }
+        )
+
+        root.minimumHeight = context.getPixels(
+            if (singleColumn) R.dimen.item_min_height else R.dimen.proxy_group_grid_min_height
+        )
+        root.setPaddingRelative(
+            horizontalPadding,
+            root.paddingTop,
+            if (singleColumn) 0 else horizontalPadding,
+            root.paddingBottom,
+        )
+        groupNameView.maxLines = if (singleColumn) 1 else 2
+
+        val indicator = selectedView.layoutParams
+        if (indicator.width != indicatorSize || indicator.height != indicatorSize) {
+            indicator.width = indicatorSize
+            indicator.height = indicatorSize
+            selectedView.layoutParams = indicator
+        }
     }
 
     private fun selectionSummary(index: Int): String {

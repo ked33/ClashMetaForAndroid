@@ -30,6 +30,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/group_name_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
@@ -56,6 +57,8 @@
             android:checked="@{selected}"
             android:clickable="false"
             android:focusable="false"
-            android:gravity="center" />
+            android:gravity="center"
+            android:minWidth="0dp"
+            android:minHeight="0dp" />
     </RelativeLayout>
 </layout>

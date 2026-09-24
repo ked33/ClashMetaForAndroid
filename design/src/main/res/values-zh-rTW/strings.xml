@@ -64,6 +64,12 @@
     <string name="format_group_position">%1$d / %2$d</string>
     <string name="format_current_proxy">目前：%s</string>
     <string name="format_proxy_group_description">%1$s，%2$s，第 %3$d 個，共 %4$d 個</string>
+    <string name="proxy_group_column_single">單欄</string>
+    <string name="proxy_group_column_double">雙欄</string>
+    <string name="proxy_group_column_triple">三欄</string>
+    <string name="proxy_group_column_single_description">單欄</string>
+    <string name="proxy_group_column_double_description">雙欄</string>
+    <string name="proxy_group_column_triple_description">三欄</string>
     <string name="recently">最近</string>
     <string name="route_system_traffic">自動轉送作業系統流量</string>
     <string name="routing_via_vpn_service">通過 VpnService 自動轉送所有作業系統流量</string>

@@ -75,6 +75,11 @@
     <dimen name="proxy_card_offset">0dp</dimen>
     <dimen name="proxy_group_navigator_height">64dp</dimen>
     <dimen name="proxy_group_navigation_action_size">48dp</dimen>
+    <dimen name="proxy_group_column_toggle_height">32dp</dimen>
+    <dimen name="proxy_group_column_indicator_size">28dp</dimen>
+    <dimen name="proxy_group_grid_gap">8dp</dimen>
+    <dimen name="proxy_group_grid_padding">8dp</dimen>
+    <dimen name="proxy_group_grid_min_height">64dp</dimen>
 
     <!-- Properties Design -->
     <dimen name="properties_element_margin_vertical">2.5dp</dimen>

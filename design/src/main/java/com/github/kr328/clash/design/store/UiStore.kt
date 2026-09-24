@@ -51,6 +51,11 @@ class UiStore(context: Context) {
         defaultValue = 2
     )
 
+    var proxyGroupColumns: Int by store.int(
+        key = "proxy_group_columns",
+        defaultValue = 1,
+    )
+
     var proxySort: ProxySort by store.enum(
         key = "proxy_sort",
         defaultValue = ProxySort.Default,

@@ -7,44 +7,74 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <RelativeLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="@dimen/toolbar_height"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:paddingStart="@dimen/dialog_padding">
 
             <TextView
                 android:id="@+id/title_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:layout_toStartOf="@id/group_count_view"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:maxWidth="148dp"
                 android:text="@string/proxy_groups"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
+
+            <LinearLayout
+                android:id="@+id/column_toggle_view"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/proxy_group_column_toggle_height"
+                android:layout_marginStart="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/column_single_view"
+                    style="@style/ProxyGroupColumnButton"
+                    android:contentDescription="@string/proxy_group_column_single_description"
+                    android:text="@string/proxy_group_column_single" />
+
+                <TextView
+                    android:id="@+id/column_double_view"
+                    style="@style/ProxyGroupColumnButton"
+                    android:contentDescription="@string/proxy_group_column_double_description"
+                    android:text="@string/proxy_group_column_double" />
+
+                <TextView
+                    android:id="@+id/column_triple_view"
+                    style="@style/ProxyGroupColumnButton"
+                    android:contentDescription="@string/proxy_group_column_triple_description"
+                    android:text="@string/proxy_group_column_triple" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
             <TextView
                 android:id="@+id/group_count_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerVertical="true"
                 android:layout_marginHorizontal="@dimen/item_midden_margin"
-                android:layout_toStartOf="@id/close_view"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
 
             <ImageView
                 android:id="@+id/close_view"
                 android:layout_width="@dimen/proxy_group_navigation_action_size"
                 android:layout_height="match_parent"
-                android:layout_alignParentEnd="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:contentDescription="@string/close"
                 android:focusable="true"
                 android:padding="12dp"
                 android:src="@drawable/ic_baseline_close" />
-        </RelativeLayout>
+        </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
