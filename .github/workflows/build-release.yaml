@@ -195,7 +195,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload formal Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.process-version.outputs.releaseTag }}
           name: Release ${{ steps.process-version.outputs.releaseTag }} (arm64-v8a)
