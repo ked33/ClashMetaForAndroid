@@ -88,6 +88,8 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                             launch {
                                 if (it.generation != reloadGenerations[it.index]) return@launch
 
+                                // Preserve results that arrive after this snapshot request starts.
+                                design.prepareGroupReload(it.index)
                                 val group = reloadLock.withPermit {
                                     withClash {
                                         queryProxyGroup(names[it.index], uiStore.proxySort)
@@ -138,29 +140,41 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                             override fun onResults(results: List<ProxyDelay>): Boolean =
                                                 this@testing.isActive && progress.offer(results)
                                         }
-                                        healthCheck(names[it.index], observer)
+                                        healthCheck(names[it.index], observer, it.name)
                                     }
 
                                     progress.close()
                                     updater.join()
-                                    // One final reload applies the requested sort and actual group selection.
                                     val generation = ++reloadGenerations[it.index]
-                                    val group = withClash {
-                                        queryProxyGroup(names[it.index], uiStore.proxySort)
-                                    }
-                                    if (generation == reloadGenerations[it.index]) {
-                                        val state = states[it.index]
-                                        state.now = group.now
-                                        design.updateGroup(
-                                            it.index, group.proxies,
-                                            group.type == "Selector" || group.type == "Fallback",
-                                            state, unorderedStates
-                                        )
+                                    if (it.name == null) {
+                                        // Group tests sort once at the end. Single-node tests retain position.
+                                        val group = withClash {
+                                            queryProxyGroup(names[it.index], uiStore.proxySort)
+                                        }
+                                        if (generation == reloadGenerations[it.index]) {
+                                            val state = states[it.index]
+                                            state.now = group.now
+                                            design.updateGroup(
+                                                it.index, group.proxies,
+                                                group.type == "Selector" || group.type == "Fallback",
+                                                state, unorderedStates
+                                            )
+                                        }
+                                    } else {
+                                        // A test can change fallback selection. Read only that small value.
+                                        val now = withClash { queryProxyGroupNow(names[it.index]) }
+                                        if (generation == reloadGenerations[it.index] && now != null) {
+                                            if (states[it.index].now != now) {
+                                                states[it.index].now = now
+                                                design.requestRedrawVisible()
+                                            }
+                                        }
                                     }
                                 } finally {
                                     progress.cancel()
                                     updater.cancel()
-                                    design.finishUrlTesting(it.index)
+                                    if (it.name == null) design.finishUrlTesting(it.index)
+                                    else design.finishNodeTesting(it.index, it.name)
                                 }
                             }
                         }

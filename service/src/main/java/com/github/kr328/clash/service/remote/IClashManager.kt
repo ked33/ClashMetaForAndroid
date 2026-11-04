@@ -10,12 +10,13 @@ interface IClashManager {
     fun queryTrafficTotal(): Long
     fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String>
     fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup
+    fun queryProxyGroupNow(name: String): String?
     fun queryConfiguration(): UiConfiguration
     fun queryProviders(): ProviderList
 
     fun patchSelector(group: String, name: String): Boolean
 
-    suspend fun healthCheck(group: String, observer: IUrlTestObserver? = null)
+    suspend fun healthCheck(group: String, observer: IUrlTestObserver? = null, proxyName: String? = null)
     suspend fun updateProvider(type: Provider.Type, name: String)
 
     fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride

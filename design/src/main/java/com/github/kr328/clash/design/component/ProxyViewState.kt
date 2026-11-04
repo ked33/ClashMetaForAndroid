@@ -23,6 +23,7 @@ class ProxyViewState(
     var subtitle: String = ""
     var delayText: String = formatDelay(proxy.delay)
         private set
+    var delayTesting: Boolean = false
     var background: Int = config.unselectedBackground
     var controls: Int = config.unselectedControl
 
@@ -42,7 +43,7 @@ class ProxyViewState(
     }
 
     private fun formatDelay(value: Int): String =
-        if (value in 0..Short.MAX_VALUE) value.toString() else ""
+        if (value in 0..Short.MAX_VALUE) value.toString() else "—"
 
     fun update(snap: Boolean): Boolean {
         val frameTime = System.currentTimeMillis()

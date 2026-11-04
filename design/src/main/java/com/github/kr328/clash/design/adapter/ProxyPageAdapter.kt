@@ -36,9 +36,28 @@ class ProxyPageAdapter(
 
     fun finishUrlTest(position: Int) = adapters[position].finishUrlTest()
 
+    fun hasNodeTests(position: Int): Boolean = adapters[position].hasNodeTests
+
+    fun prepareGroupReload(position: Int) = adapters[position].clearIdleDelays()
+
+    fun beginNodeTest(position: Int, name: String): Boolean {
+        if (!adapters[position].beginNodeTest(name)) return false
+        redrawStates(position, adapters[position].statesFor(name).toSet())
+        return true
+    }
+
+    fun finishNodeTest(position: Int, name: String) {
+        adapters[position].finishNodeTest(name)
+        redrawStates(position, adapters[position].statesFor(name).toSet())
+    }
+
     fun updateDelays(position: Int, results: List<ProxyDelay>, redraw: Boolean) {
         val changed = adapters[position].updateDelays(results)
-        if (!redraw || changed.isEmpty()) return
+        if (redraw) redrawStates(position, changed)
+    }
+
+    private fun redrawStates(position: Int, changed: Set<ProxyViewState>) {
+        if (changed.isEmpty()) return
         for (holder in attachedPages) {
             val view = holder.recyclerView
             if (view.position != position || !view.isShown) continue
@@ -62,6 +81,9 @@ class ProxyPageAdapter(
         for (index in 0 until view.childCount) {
             val child = view.getChildAt(index)
             (child as? ProxyView)?.marqueeAllowed = canMarquee(view, child)
+            if (child is ProxyView && child.state?.delayTesting == true && canMarquee(view, child)) {
+                child.postInvalidateOnAnimation()
+            }
         }
     }
 

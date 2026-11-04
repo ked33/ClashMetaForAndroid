@@ -82,7 +82,12 @@ func queryNotificationProxy(refresh C.int) *C.char {
 }
 
 //export healthCheck
-func healthCheck(completable unsafe.Pointer, name C.c_string, callback unsafe.Pointer) {
+func healthCheck(completable unsafe.Pointer, name C.c_string, callback unsafe.Pointer, target C.c_string) {
+	var proxyName *string
+	if target != nil {
+		value := C.GoString(target)
+		proxyName = &value
+	}
 	go func(name string) {
 		defer C.release_object(completable)
 		var report func([]progress.Delay) bool
@@ -92,7 +97,7 @@ func healthCheck(completable unsafe.Pointer, name C.c_string, callback unsafe.Po
 				return C.url_test_report(callback, marshalJson(delays)) != 0
 			}
 		}
-		tunnel.HealthCheck(name, report)
+		tunnel.HealthCheck(name, report, proxyName)
 
 		C.complete(completable, nil)
 	}(C.GoString(name))

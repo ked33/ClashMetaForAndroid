@@ -1,16 +1,25 @@
 package com.github.kr328.clash.design.component
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.os.SystemClock
 import android.text.TextPaint
 import android.text.TextUtils
 import android.view.Choreographer
+import android.view.MotionEvent
+import android.view.SoundEffectConstants
 import android.view.View
+import android.view.ViewConfiguration
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.view.ViewCompat
 import com.github.kr328.clash.common.compat.getDrawableCompat
+import com.github.kr328.clash.design.R
 
 class ProxyView(
     context: Context,
@@ -26,6 +35,16 @@ class ProxyView(
     private var cachedWidth = -1
     private var delayWidth = 0f
     private var delayCount = 0
+    private val delayBounds = RectF()
+    private val delayArc = RectF()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val minDelayTarget = 48f * resources.displayMetrics.density
+    private var delayGesture = false
+    private var delayGestureCancelled = false
+    private var delayDownX = 0f
+    private var delayDownY = 0f
+
+    var onDelayClick: (() -> Unit)? = null
 
     var marqueeAllowed = false
         set(value) {
@@ -37,11 +56,18 @@ class ProxyView(
 
     init {
         background = context.getDrawableCompat(config.clickableBackground)
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        ViewCompat.addAccessibilityAction(this, context.getString(R.string.delay_test)) { _, _ ->
+            performDelayClick()
+        }
     }
 
     var state: ProxyViewState? = null
         set(value) {
             field = value
+            delayGesture = false
+            isPressed = false
+            delayBounds.setEmpty()
             cachedTextSize = -1f
             resetMarquee()
             invalidate()
@@ -53,6 +79,8 @@ class ProxyView(
     }
 
     override fun onDetachedFromWindow() {
+        delayGesture = false
+        isPressed = false
         resetMarquee()
         super.onDetachedFromWindow()
     }
@@ -83,7 +111,8 @@ class ProxyView(
 
     override fun doFrame(frameTimeNanos: Long) {
         frameScheduled = false
-        if (marqueeAllowed && isAttachedToWindow && windowVisibility == VISIBLE && hasWindowFocus()) {
+        if ((marqueeAllowed || state?.delayTesting == true) && isAttachedToWindow &&
+            windowVisibility == VISIBLE && hasWindowFocus() && isShown && getLocalVisibleRect(visibleRect)) {
             invalidate()
         } else {
             resetMarquee()
@@ -107,6 +136,66 @@ class ProxyView(
         if (frameScheduled || delayMillis == Long.MAX_VALUE) return
         frameScheduled = true
         Choreographer.getInstance().postFrameCallbackDelayed(this, delayMillis)
+    }
+
+    private fun performDelayClick(): Boolean {
+        val current = state ?: return false
+        val click = onDelayClick ?: return false
+        if (!isEnabled || current.delayTesting) return false
+        playSoundEffect(SoundEffectConstants.CLICK)
+        sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_CLICKED)
+        click()
+        return true
+    }
+
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        state?.let {
+            info.contentDescription = "${it.title}, ${it.subtitle}, ${if (it.delayTesting) context.getString(R.string.loading) else it.delayText}"
+        }
+    }
+
+    // Canvas has two actions; the separate accessibility action above mirrors the delay target.
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (isEnabled && onDelayClick != null && delayBounds.contains(event.x, event.y)) {
+                    delayGesture = true
+                    delayGestureCancelled = false
+                    delayDownX = event.x
+                    delayDownY = event.y
+                    isPressed = true
+                    drawableHotspotChanged(event.x, event.y)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_MOVE -> if (delayGesture) {
+                if (kotlin.math.abs(event.x - delayDownX) > touchSlop ||
+                    kotlin.math.abs(event.y - delayDownY) > touchSlop) {
+                    delayGestureCancelled = true
+                    isPressed = false
+                }
+                return true
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> if (delayGesture) {
+                delayGestureCancelled = true
+                isPressed = false
+                return true
+            }
+            MotionEvent.ACTION_UP -> if (delayGesture) {
+                delayGesture = false
+                isPressed = false
+                if (!delayGestureCancelled && delayBounds.contains(event.x, event.y)) performDelayClick()
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> if (delayGesture) {
+                delayGesture = false
+                isPressed = false
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     constructor(context: Context) : this(context, ProxyViewConfig(context, 2))
@@ -233,11 +322,12 @@ class ProxyView(
             delayWidth = paint.measureText(state.delayText, 0, delayCount)
         }
 
+        val delayTargetWidth = maxOf(delayWidth + state.config.contentPadding, minDelayTarget)
         val mainTextWidth = (width -
                 state.config.layoutPadding * 2 -
-                state.config.contentPadding * 2 -
-                delayWidth -
-                state.config.textMargin * 2
+                state.config.contentPadding -
+                delayTargetWidth -
+                state.config.textMargin
                 )
             .coerceAtLeast(0f)
 
@@ -249,12 +339,31 @@ class ProxyView(
         val speed = 30f * resources.displayMetrics.density / 1000f
         val gap = mainTextWidth / 3f
 
-        // draw delay
-        canvas.apply {
-            val x = width - state.config.layoutPadding - state.config.contentPadding - delayWidth
-            val y = height / 2f - textOffset
+        val delayRight = width - state.config.layoutPadding - state.config.contentPadding
+        val delayLeft = delayRight - delayWidth
+        val targetRight = width - state.config.layoutPadding
+        val targetHalfHeight = maxOf(paint.textSize, minDelayTarget / 2f)
+        delayBounds.set(
+            (targetRight - delayTargetWidth).coerceAtLeast(state.config.layoutPadding),
+            (height / 2f - targetHalfHeight).coerceAtLeast(0f),
+            targetRight,
+            (height / 2f + targetHalfHeight).coerceAtMost(height),
+        )
 
-            drawText(state.delayText, 0, delayCount, x, y, paint)
+        // draw delay
+        val spin = state.delayTesting && isAttachedToWindow && windowVisibility == VISIBLE &&
+                hasWindowFocus() && isShown && getLocalVisibleRect(visibleRect)
+        if (state.delayTesting) {
+            val radius = paint.textSize / 2f
+            val centerX = delayRight - maxOf(delayWidth, paint.textSize) / 2f
+            delayArc.set(centerX - radius, height / 2f - radius, centerX + radius, height / 2f + radius)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2f * resources.displayMetrics.density
+            val angle = if (spin) (SystemClock.uptimeMillis() % 1000L) * 0.36f else 0f
+            canvas.drawArc(delayArc, angle, 270f, false, paint)
+            paint.style = Paint.Style.FILL
+        } else {
+            canvas.drawText(state.delayText, 0, delayCount, delayLeft, height / 2f - textOffset, paint)
         }
 
         val x = state.config.layoutPadding + state.config.contentPadding
@@ -264,7 +373,12 @@ class ProxyView(
                 (height - state.config.layoutPadding * 2) / 3f * 2 - textOffset
         val titleDelay = titleLine.draw(canvas, paint, x, titleY, height, scrolling, now, speed, gap)
         val subtitleDelay = subtitleLine.draw(canvas, paint, x, subtitleY, height, scrolling, now, speed, gap)
-        scheduleFrame(minOf(titleDelay, subtitleDelay))
+        if (spin && frameScheduled) {
+            // A marquee may be waiting through its pause; the spinner needs the next frame.
+            Choreographer.getInstance().removeFrameCallback(this)
+            frameScheduled = false
+        }
+        scheduleFrame(if (spin) 0L else minOf(titleDelay, subtitleDelay))
     }
 
     /** Measurement and ellipsis allocation happen only when text or geometry changes. */

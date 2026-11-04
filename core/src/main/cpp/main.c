@@ -201,13 +201,15 @@ JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheck(JNIEnv *env, jobject thiz,
                                                                  jobject completable,
                                                                  jstring name,
-                                                                 jobject callback) {
+                                                                 jobject callback,
+                                                                 jstring proxy_name) {
     TRACE_METHOD();
 
     jobject _completable = new_global(completable);
     scoped_string _name = get_string(name);
+    scoped_string _proxy_name = proxy_name == NULL ? NULL : get_string(proxy_name);
 
-    healthCheck(_completable, _name, callback == NULL ? NULL : new_global(callback));
+    healthCheck(_completable, _name, callback == NULL ? NULL : new_global(callback), _proxy_name);
 }
 
 JNIEXPORT jstring JNICALL

@@ -126,14 +126,18 @@ object Clash {
     fun queryNotificationProxy(refresh: Boolean): NotificationProxy =
         Json.decodeFromString(NotificationProxy.serializer(), Bridge.nativeQueryNotificationProxy(refresh))
 
-    fun healthCheck(name: String, report: ((List<ProxyDelay>) -> Boolean)? = null): CompletableDeferred<Unit> {
+    fun healthCheck(
+        name: String,
+        report: ((List<ProxyDelay>) -> Boolean)? = null,
+        proxyName: String? = null,
+    ): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
             val callback = report?.let { handler ->
                 UrlTestCallback { json ->
                     isActive && handler(Json.decodeFromString(ListSerializer(ProxyDelay.serializer()), json))
                 }
             }
-            Bridge.nativeHealthCheck(this, name, callback)
+            Bridge.nativeHealthCheck(this, name, callback, proxyName)
         }
     }
 

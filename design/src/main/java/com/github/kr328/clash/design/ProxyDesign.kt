@@ -50,7 +50,7 @@ class ProxyDesign(
         data class PatchMode(val mode: TunnelState.Mode?) : Request()
         data class Reload(val index: Int, val generation: Int) : Request()
         data class Select(val index: Int, val name: String) : Request()
-        data class UrlTest(val index: Int) : Request()
+        data class UrlTest(val index: Int, val name: String? = null) : Request()
     }
 
     private val binding = DesignProxyBinding
@@ -92,6 +92,8 @@ class ProxyDesign(
     fun updateDelays(position: Int, results: List<ProxyDelay>, redraw: Boolean) {
         adapter.updateDelays(position, results, redraw)
     }
+
+    fun prepareGroupReload(position: Int) = adapter.prepareGroupReload(position)
 
     suspend fun updateGroup(
         position: Int,
@@ -166,9 +168,11 @@ class ProxyDesign(
                     config,
                     navigationHeight,
                     List(groupNames.size) { index ->
-                        ProxyAdapter(config) { name ->
-                            requests.trySend(Request.Select(index, name))
-                        }
+                        ProxyAdapter(
+                            config,
+                            clicked = { name -> requests.trySend(Request.Select(index, name)) },
+                            delayClicked = { name -> requestNodeTesting(index, name) },
+                        )
                     }
                 ) {
                     if (it == currentItem)
@@ -237,6 +241,7 @@ class ProxyDesign(
         if (groupNames.isEmpty() || urlTesting) return
 
         val position = binding.pagesView.currentItem
+        if (adapter.hasNodeTests(position)) return
         adapter.beginUrlTest(position)
         adapter.states[position].urlTesting = true
         updateUrlTestButtonStatus()
@@ -252,6 +257,19 @@ class ProxyDesign(
         if (position == binding.pagesView.currentItem) {
             updateUrlTestButtonStatus()
         }
+    }
+
+    private fun requestNodeTesting(position: Int, name: String) {
+        if (adapter.states[position].urlTesting || !adapter.beginNodeTest(position, name)) return
+        updateUrlTestButtonStatus()
+        if (requests.trySend(Request.UrlTest(position, name)).isFailure) {
+            finishNodeTesting(position, name)
+        }
+    }
+
+    fun finishNodeTesting(position: Int, name: String) {
+        adapter.finishNodeTest(position, name)
+        updateUrlTestButtonStatus()
     }
 
     private fun configureGroupNavigator() {
@@ -510,6 +528,10 @@ class ProxyDesign(
     }
 
     private fun updateUrlTestButtonStatus() {
+        val nodeTesting = adapter.hasNodeTests(binding.pagesView.currentItem)
+        binding.urlTestView.isEnabled = !nodeTesting
+        binding.urlTestView.alpha = if (nodeTesting) DISABLED_ALPHA else 1f
+        binding.urlTestFloatView.isEnabled = !nodeTesting
         if (verticalBottomScrolled || horizontalScrolling || urlTesting) {
             binding.urlTestFloatView.hide()
         } else {

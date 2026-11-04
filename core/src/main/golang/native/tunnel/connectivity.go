@@ -35,11 +35,11 @@ func groupTestOptions(g outboundgroup.ProxyGroup) (testOptions, error) {
 	return options, err
 }
 
-func HealthCheck(name string, report func([]progress.Delay) bool) {
-	healthCheck(name, true, report)
+func HealthCheck(name string, report func([]progress.Delay) bool, proxyName *string) {
+	healthCheck(name, true, report, proxyName)
 }
 
-func healthCheck(name string, manual bool, report func([]progress.Delay) bool) {
+func healthCheck(name string, manual bool, report func([]progress.Delay) bool, proxyName *string) {
 	p := tunnel.Proxies()[name]
 
 	if p == nil {
@@ -70,11 +70,28 @@ func healthCheck(name string, manual bool, report func([]progress.Delay) bool) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if report != nil {
+		if report != nil || proxyName != nil {
 			// Same members and URLTest semantics as GroupBase, with per-result progress.
+			proxies := g.Proxies()
+			if proxyName != nil {
+				// Provider nodes are not necessarily in tunnel.Proxies(). Resolve
+				// within the displayed group, and never fall back to testing all.
+				var selected C.Proxy
+				for _, proxy := range proxies {
+					if proxy.Name() == *proxyName {
+						selected = proxy
+						break
+					}
+				}
+				if selected == nil {
+					log.Warnln("Request node health check: group member not found")
+					return
+				}
+				proxies = []C.Proxy{selected}
+			}
 			results := make(chan progress.Delay, 64)
 			var wg sync.WaitGroup
-			for _, proxy := range g.Proxies() {
+			for _, proxy := range proxies {
 				wg.Add(1)
 				go func(proxy C.Proxy) {
 					defer wg.Done()
@@ -117,7 +134,7 @@ func healthCheck(name string, manual bool, report func([]progress.Delay) bool) {
 func HealthCheckAll() {
 	for _, g := range QueryProxyGroupNames(false) {
 		go func(group string) {
-			healthCheck(group, false, nil)
+			healthCheck(group, false, nil, nil)
 		}(g)
 	}
 }

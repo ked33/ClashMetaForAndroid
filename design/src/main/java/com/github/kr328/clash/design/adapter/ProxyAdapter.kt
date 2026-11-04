@@ -10,6 +10,7 @@ import com.github.kr328.clash.design.component.ProxyViewState
 class ProxyAdapter(
     private val config: ProxyViewConfig,
     private val clicked: (String) -> Unit,
+    private val delayClicked: (String) -> Unit,
 ) : RecyclerView.Adapter<ProxyAdapter.Holder>() {
     class Holder(val view: ProxyView) : RecyclerView.ViewHolder(view)
 
@@ -17,17 +18,20 @@ class ProxyAdapter(
     private var statesByName: Map<String, List<ProxyViewState>> = emptyMap()
     private val liveDelays = mutableMapOf<String, Int>()
     private var testing = false
+    private val testingNodes = mutableSetOf<String>()
     var states: List<ProxyViewState> = emptyList()
         set(value) {
             field = value
             statesByName = value.groupBy { it.proxy.name }
             // A selection/settings reload during a test must retain completed results.
-            if (testing) {
-                liveDelays.forEach { (name, delay) ->
-                    statesByName[name]?.forEach { it.updateDelay(delay) }
-                }
+            liveDelays.forEach { (name, delay) ->
+                statesByName[name]?.forEach { it.updateDelay(delay) }
             }
+            value.forEach { it.delayTesting = it.proxy.name in testingNodes }
         }
+
+    val hasNodeTests: Boolean
+        get() = testingNodes.isNotEmpty()
 
     fun beginUrlTest() {
         liveDelays.clear()
@@ -43,12 +47,29 @@ class ProxyAdapter(
         if (results.isEmpty()) return emptySet()
         val changed = mutableSetOf<ProxyViewState>()
         for (result in results) {
-            if (testing) liveDelays[result.name] = result.delay
+            liveDelays[result.name] = result.delay
             statesByName[result.name]?.forEach {
                 if (it.updateDelay(result.delay)) changed.add(it)
             }
         }
         return changed
+    }
+
+    fun beginNodeTest(name: String): Boolean {
+        if (testing || name !in statesByName || !testingNodes.add(name)) return false
+        statesByName[name]?.forEach { it.delayTesting = true }
+        return true
+    }
+
+    fun finishNodeTest(name: String) {
+        testingNodes.remove(name)
+        statesByName[name]?.forEach { it.delayTesting = false }
+    }
+
+    fun statesFor(name: String): List<ProxyViewState> = statesByName[name].orEmpty()
+
+    fun clearIdleDelays() {
+        if (!testing && !hasNodeTests) liveDelays.clear()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -60,6 +81,7 @@ class ProxyAdapter(
 
         holder.view.apply {
             state = current
+            onDelayClick = { delayClicked(current.proxy.name) }
 
             setOnClickListener {
                 clicked(current.proxy.name)
@@ -80,6 +102,7 @@ class ProxyAdapter(
 
     override fun onViewRecycled(holder: Holder) {
         holder.view.marqueeAllowed = false
+        holder.view.onDelayClick = null
         holder.view.state = null
         super.onViewRecycled(holder)
     }

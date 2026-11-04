@@ -38,6 +38,8 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryGroup(name, proxySort)
     }
 
+    override fun queryProxyGroupNow(name: String): String? = Clash.querySelectorNow(name)
+
     override fun queryConfiguration(): UiConfiguration {
         return Clash.queryConfiguration()
     }
@@ -145,7 +147,7 @@ class ClashManager(private val context: Context) : IClashManager,
         Clash.clearOverride(slot)
     }
 
-    override suspend fun healthCheck(group: String, observer: IUrlTestObserver?) {
+    override suspend fun healthCheck(group: String, observer: IUrlTestObserver?, proxyName: String?) {
         val test = Clash.healthCheck(group, observer?.let { callback ->
             { results: List<ProxyDelay> ->
                 try {
@@ -155,7 +157,7 @@ class ClashManager(private val context: Context) : IClashManager,
                     false
                 }
             }
-        })
+        }, proxyName)
         try {
             test.await()
             NotificationTitle.selectionChanged()
