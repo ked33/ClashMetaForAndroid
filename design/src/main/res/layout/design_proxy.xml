@@ -145,20 +145,22 @@
                         android:layout_weight="1"
                         android:orientation="vertical">
 
-                        <TextView
+                        <com.github.kr328.clash.design.view.MarqueeTextView
                             android:id="@+id/current_group_view"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:maxLines="1"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:singleLine="true"
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
-                        <TextView
+                        <com.github.kr328.clash.design.view.MarqueeTextView
                             android:id="@+id/current_group_selection_view"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:maxLines="1"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:singleLine="true"
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
                     </LinearLayout>
 

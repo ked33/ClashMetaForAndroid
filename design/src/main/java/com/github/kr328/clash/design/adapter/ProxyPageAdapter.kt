@@ -1,10 +1,12 @@
 package com.github.kr328.clash.design.adapter
 
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.component.ProxyPageFactory
+import com.github.kr328.clash.design.component.ProxyView
 import com.github.kr328.clash.design.component.ProxyViewConfig
 import com.github.kr328.clash.design.component.ProxyViewState
 import com.github.kr328.clash.design.model.ProxyPageState
@@ -23,8 +25,27 @@ class ProxyPageAdapter(
 ) : RecyclerView.Adapter<ProxyPageFactory.Holder>() {
     private val factory = ProxyPageFactory(config)
     private var parent: RecyclerView? = null
+    private val attachedPages = mutableSetOf<ProxyPageFactory.Holder>()
+    private var marqueePage = -1
 
     val states = List(adapters.size) { ProxyPageState() }
+
+    fun setMarqueePage(position: Int) {
+        if (marqueePage == position) return
+        marqueePage = position
+        attachedPages.forEach { updateMarquees(it.recyclerView) }
+    }
+
+    private fun updateMarquees(view: RecyclerView) {
+        for (index in 0 until view.childCount) {
+            val child = view.getChildAt(index)
+            (child as? ProxyView)?.marqueeAllowed = canMarquee(view, child)
+        }
+    }
+
+    private fun canMarquee(view: RecyclerView, child: View): Boolean =
+        marqueePage >= 0 && view.position == marqueePage && view.scrollState == RecyclerView.SCROLL_STATE_IDLE &&
+                child.bottom > view.paddingTop && child.top < view.height - view.paddingBottom
 
     suspend fun updateAdapter(
         position: Int,
@@ -62,6 +83,27 @@ class ProxyPageAdapter(
         val toolbarHeight = config.context.getPixels(R.dimen.toolbar_height)
 
         holder.recyclerView.bindInsets(surface, toolbarHeight + navigationHeight)
+        holder.recyclerView.addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+            updateMarquees(view as RecyclerView)
+        }
+        holder.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                updateMarquees(recyclerView)
+            }
+
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                if (recyclerView.scrollState == RecyclerView.SCROLL_STATE_IDLE) updateMarquees(recyclerView)
+            }
+        })
+        holder.recyclerView.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
+            override fun onChildViewAttachedToWindow(view: View) {
+                (view as? ProxyView)?.marqueeAllowed = canMarquee(holder.recyclerView, view)
+            }
+
+            override fun onChildViewDetachedFromWindow(view: View) {
+                (view as? ProxyView)?.marqueeAllowed = false
+            }
+        })
         holder.recyclerView.addScrolledToBottomObserver { view, bottom ->
             val position = view.position
             val state = states[position]
@@ -85,6 +127,21 @@ class ProxyPageAdapter(
             this.position = position
             this.swapAdapter(adapter, false)
         }
+        updateMarquees(holder.recyclerView)
+    }
+
+    override fun onViewAttachedToWindow(holder: ProxyPageFactory.Holder) {
+        super.onViewAttachedToWindow(holder)
+        attachedPages.add(holder)
+        updateMarquees(holder.recyclerView)
+    }
+
+    override fun onViewDetachedFromWindow(holder: ProxyPageFactory.Holder) {
+        attachedPages.remove(holder)
+        for (index in 0 until holder.recyclerView.childCount) {
+            (holder.recyclerView.getChildAt(index) as? ProxyView)?.marqueeAllowed = false
+        }
+        super.onViewDetachedFromWindow(holder)
     }
 
     override fun getItemCount(): Int {
@@ -98,6 +155,8 @@ class ProxyPageAdapter(
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        setMarqueePage(-1)
+        attachedPages.clear()
         this.parent = null
     }
 

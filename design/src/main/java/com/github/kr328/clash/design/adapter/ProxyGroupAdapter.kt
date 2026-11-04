@@ -1,6 +1,7 @@
 package com.github.kr328.clash.design.adapter
 
 import android.content.Context
+import android.text.TextUtils
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.design.R
@@ -22,6 +23,15 @@ class ProxyGroupAdapter(
     private var keyword = ""
     private var columnCount = 1
     private var visibleIndices: List<Int> = groupNames.indices.toList()
+    private var recyclerView: RecyclerView? = null
+    private val scrollListener = object : RecyclerView.OnScrollListener() {
+        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+            for (index in 0 until recyclerView.childCount) {
+                val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(index)) as Holder
+                updateMarquee(holder)
+            }
+        }
+    }
 
     init {
         setHasStableIds(true)
@@ -86,6 +96,49 @@ class ProxyGroupAdapter(
             }
             executePendingBindings()
         }
+        updateMarquee(holder)
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        this.recyclerView = recyclerView
+        recyclerView.addOnScrollListener(scrollListener)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        recyclerView.removeOnScrollListener(scrollListener)
+        for (index in 0 until recyclerView.childCount) {
+            stopMarquee(recyclerView.getChildViewHolder(recyclerView.getChildAt(index)) as Holder)
+        }
+        this.recyclerView = null
+        super.onDetachedFromRecyclerView(recyclerView)
+    }
+
+    override fun onViewAttachedToWindow(holder: Holder) {
+        super.onViewAttachedToWindow(holder)
+        updateMarquee(holder)
+    }
+
+    override fun onViewDetachedFromWindow(holder: Holder) {
+        stopMarquee(holder)
+        super.onViewDetachedFromWindow(holder)
+    }
+
+    override fun onViewRecycled(holder: Holder) {
+        stopMarquee(holder)
+        super.onViewRecycled(holder)
+    }
+
+    private fun updateMarquee(holder: Holder) {
+        val enabled = holder.binding.selected == true &&
+                recyclerView?.scrollState == RecyclerView.SCROLL_STATE_IDLE
+        holder.binding.groupNameView.marqueeEnabled = enabled
+        holder.binding.summaryView.marqueeEnabled = enabled
+    }
+
+    private fun stopMarquee(holder: Holder) {
+        holder.binding.groupNameView.marqueeEnabled = false
+        holder.binding.summaryView.marqueeEnabled = false
     }
 
     override fun getItemId(position: Int): Long {
@@ -134,7 +187,10 @@ class ProxyGroupAdapter(
             if (singleColumn) 0 else horizontalPadding,
             root.paddingBottom,
         )
-        groupNameView.maxLines = if (singleColumn) 1 else 2
+        val singleLine = singleColumn || selected == true
+        groupNameView.setSingleLine(singleLine)
+        groupNameView.maxLines = if (singleLine) 1 else 2
+        groupNameView.ellipsize = if (selected == true) TextUtils.TruncateAt.MARQUEE else TextUtils.TruncateAt.END
 
         val indicator = selectedView.layoutParams
         if (indicator.width != indicatorSize || indicator.height != indicatorSize) {

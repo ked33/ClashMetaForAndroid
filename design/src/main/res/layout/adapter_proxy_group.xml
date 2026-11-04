@@ -29,21 +29,24 @@
             android:layout_toStartOf="@id/selected_view"
             android:orientation="vertical">
 
-            <TextView
+            <com.github.kr328.clash.design.view.MarqueeTextView
                 android:id="@+id/group_name_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
+                android:marqueeRepeatLimit="marquee_forever"
                 android:maxLines="1"
                 android:text="@{groupName}"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
 
-            <TextView
+            <com.github.kr328.clash.design.view.MarqueeTextView
+                android:id="@+id/summary_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/item_text_margin"
-                android:ellipsize="end"
-                android:maxLines="1"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:singleLine="true"
                 android:text="@{summary}"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
         </LinearLayout>

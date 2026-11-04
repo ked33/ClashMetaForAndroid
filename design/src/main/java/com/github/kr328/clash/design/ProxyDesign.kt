@@ -30,6 +30,7 @@ import com.github.kr328.clash.design.util.getPixels
 import com.github.kr328.clash.design.util.layoutInflater
 import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.root
+import com.github.kr328.clash.design.view.MarqueeTextView
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -173,6 +174,7 @@ class ProxyDesign(
                     override fun onPageScrollStateChanged(state: Int) {
                         horizontalScrolling = state != ViewPager2.SCROLL_STATE_IDLE
 
+                        updateMarqueePage()
                         updateUrlTestButtonStatus()
                     }
 
@@ -180,6 +182,7 @@ class ProxyDesign(
                         uiStore.proxyLastGroup = groupNames[position]
                         groupPickerAdapter?.select(position)
                         updateGroupNavigation()
+                        updateMarqueePage()
                         updateUrlTestButtonStatus()
                     }
                 })
@@ -188,6 +191,12 @@ class ProxyDesign(
             if (useTabs) {
                 TabLayoutMediator(binding.tabLayoutView, binding.pagesView) { tab, index ->
                     tab.text = groupNames[index]
+                    tab.customView = (context.layoutInflater.inflate(
+                        R.layout.component_proxy_tab, binding.tabLayoutView, false
+                    ) as MarqueeTextView).apply {
+                        text = groupNames[index]
+                        binding.tabLayoutView.tabTextColors?.let { setTextColor(it) }
+                    }
                 }.attach()
             }
 
@@ -200,6 +209,21 @@ class ProxyDesign(
             binding.pagesView.post {
                 if (initialPosition > 0)
                     binding.pagesView.setCurrentItem(initialPosition, false)
+                updateMarqueePage()
+            }
+        }
+    }
+
+    private fun updateMarqueePage() {
+        if (groupNames.isEmpty()) return
+        val allowed = !horizontalScrolling && groupPickerDialog?.isShowing != true
+        adapter.setMarqueePage(if (allowed) binding.pagesView.currentItem else -1)
+        binding.currentGroupView.marqueeEnabled = allowed
+        binding.currentGroupSelectionView.marqueeEnabled = allowed
+        if (useTabs) {
+            for (index in groupNames.indices) {
+                (binding.tabLayoutView.getTabAt(index)?.customView as? MarqueeTextView)?.marqueeEnabled =
+                    allowed && index == binding.pagesView.currentItem
             }
         }
     }
@@ -304,6 +328,7 @@ class ProxyDesign(
                 groupPickerDialog = null
                 groupPickerAdapter = null
                 groupPickerBinding = null
+                updateMarqueePage()
             }
         }
 
@@ -311,6 +336,7 @@ class ProxyDesign(
         groupPickerAdapter = pickerAdapter
         groupPickerBinding = dialogBinding
         dialog.show()
+        updateMarqueePage()
 
         dialogBinding.mainList.post {
             val position = pickerAdapter.visiblePositionOf(binding.pagesView.currentItem)
@@ -441,8 +467,12 @@ class ProxyDesign(
         val hasPrevious = position > 0
         val hasNext = position < groupNames.lastIndex
 
-        binding.currentGroupView.text = groupNames[position]
-        binding.currentGroupSelectionView.text = summary
+        if (binding.currentGroupView.text.toString() != groupNames[position]) {
+            binding.currentGroupView.text = groupNames[position]
+        }
+        if (binding.currentGroupSelectionView.text.toString() != summary) {
+            binding.currentGroupSelectionView.text = summary
+        }
         binding.groupPositionView.text = context.getString(
             R.string.format_group_position,
             position + 1,

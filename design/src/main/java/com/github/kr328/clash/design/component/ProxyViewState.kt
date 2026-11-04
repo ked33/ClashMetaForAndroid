@@ -1,9 +1,9 @@
 package com.github.kr328.clash.design.component
 
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.text.TextPaint
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.model.ProxyState
 import kotlin.math.absoluteValue
@@ -15,7 +15,7 @@ class ProxyViewState(
     private val parent: ProxyState,
     private val link: ProxyState?
 ) {
-    val paint = Paint()
+    val paint = TextPaint()
     val rect = Rect()
     val path = Path()
 
@@ -26,7 +26,8 @@ class ProxyViewState(
     var controls: Int = config.unselectedControl
 
     private var delay: Int = 0
-    private var selected: Boolean = false
+    var selected: Boolean = false
+        private set
     private var parentNow: String = ""
     private var linkNow: String? = null
 

@@ -41,4 +41,10 @@ class ProxyAdapter(
     override fun getItemCount(): Int {
         return states.size
     }
+
+    override fun onViewRecycled(holder: Holder) {
+        holder.view.marqueeAllowed = false
+        holder.view.state = null
+        super.onViewRecycled(holder)
+    }
 }
