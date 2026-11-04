@@ -175,6 +175,8 @@ jobs:
 
       - name: Check incremental URL test batching
         working-directory: core/src/main/golang
+        env:
+          CGO_ENABLED: "1"
         run: go test -race -timeout 30s ./native/progress
 
       - name: Release Build (meta / arm64-v8a only)
