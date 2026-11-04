@@ -99,7 +99,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 design.updateGroup(
                                     it.index,
                                     group.proxies,
-                                    group.type == "Selector",
+                                    group.type == "Selector" || group.type == "Fallback",
                                     state,
                                     unorderedStates
                                 )
@@ -110,9 +110,8 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 patchSelector(names[it.index], it.name)
                             }
                             if (patched) {
-                                reloadGenerations[it.index]++
-                                states[it.index].now = it.name
-                                design.requestRedrawVisible()
+                                val generation = ++reloadGenerations[it.index]
+                                design.requests.send(ProxyDesign.Request.Reload(it.index, generation))
                             } else {
                                 design.requests.send(ProxyDesign.Request.ReloadAll)
                             }
