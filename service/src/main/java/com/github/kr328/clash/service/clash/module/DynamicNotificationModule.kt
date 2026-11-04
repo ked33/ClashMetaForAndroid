@@ -16,7 +16,7 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.util.trafficDownload
 import com.github.kr328.clash.core.util.trafficUpload
 import com.github.kr328.clash.service.R
-import com.github.kr328.clash.service.StatusProvider
+import com.github.kr328.clash.service.clash.NotificationTitle
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.select
@@ -29,7 +29,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         .setColor(service.getColorCompat(R.color.color_clash))
         .setOnlyAlertOnce(true)
         .setShowWhen(false)
-        .setContentTitle("Not Selected")
+        .setContentTitle(service.getText(R.string.loading))
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .setContentIntent(
             PendingIntent.getActivity(
@@ -42,6 +42,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         )
 
     private val notificationManager = NotificationManagerCompat.from(service)
+    private val title = NotificationTitle(service)
 
     private fun update() {
         val now = Clash.queryTrafficNow()
@@ -53,6 +54,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         val downloaded = total.trafficDownload()
 
         val notification = builder
+            .setContentTitle(title.resolve())
             .setContentText(
                 service.getString(
                     R.string.clash_notification_content,
@@ -79,23 +81,32 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         }
 
         val profileLoaded = receiveBroadcast(capacity = Channel.CONFLATED) {
+            addAction(Intents.ACTION_PROFILE_LOADING)
             addAction(Intents.ACTION_PROFILE_LOADED)
         }
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 
+        update()
+
         while (true) {
             select<Unit> {
                 screenToggle.onReceive {
                     when (it.action) {
-                        Intent.ACTION_SCREEN_ON ->
+                        Intent.ACTION_SCREEN_ON -> {
                             shouldUpdate = true
+                            update()
+                        }
                         Intent.ACTION_SCREEN_OFF ->
                             shouldUpdate = false
                     }
                 }
                 profileLoaded.onReceive {
-                    builder.setContentTitle(StatusProvider.currentProfile ?: "Not selected")
+                    title.profileChanged()
+                    update()
+                }
+                NotificationTitle.changes.onReceive {
+                    update()
                 }
                 if (shouldUpdate) {
                     ticker.onReceive {

@@ -76,6 +76,11 @@ func querySelectorNow(name C.c_string) *C.char {
 	return C.CString(current)
 }
 
+//export queryNotificationProxy
+func queryNotificationProxy(refresh C.int) *C.char {
+	return marshalJson(tunnel.QueryNotificationProxy(refresh != 0))
+}
+
 //export healthCheck
 func healthCheck(completable unsafe.Pointer, name C.c_string, callback unsafe.Pointer) {
 	go func(name string) {

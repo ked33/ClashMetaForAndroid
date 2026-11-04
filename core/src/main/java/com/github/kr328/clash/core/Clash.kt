@@ -123,6 +123,9 @@ object Clash {
         return Bridge.nativeQuerySelectorNow(name)
     }
 
+    fun queryNotificationProxy(refresh: Boolean): NotificationProxy =
+        Json.decodeFromString(NotificationProxy.serializer(), Bridge.nativeQueryNotificationProxy(refresh))
+
     fun healthCheck(name: String, report: ((List<ProxyDelay>) -> Boolean)? = null): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
             val callback = report?.let { handler ->

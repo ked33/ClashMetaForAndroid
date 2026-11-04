@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.StatusProvider
+import com.github.kr328.clash.service.clash.NotificationTitle
 import com.github.kr328.clash.service.clash.SelectionDebugLog
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Selection
@@ -194,6 +195,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 stage = "bind_listener"
                 activeDebugStage = stage
                 Clash.setSelectorUpdateListener { group, selected ->
+                    NotificationTitle.selectionChanged()
                     val groupToken = selectionDebug.token(group)
                     val selectedToken = selectionDebug.token(selected)
                     selectionDebug.event(

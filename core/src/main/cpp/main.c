@@ -210,6 +210,13 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheck(JNIEnv *env, jo
     healthCheck(_completable, _name, callback == NULL ? NULL : new_global(callback));
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryNotificationProxy(JNIEnv *env, jobject thiz,
+                                                                          jboolean refresh) {
+    scoped_string response = queryNotificationProxy((int) refresh);
+    return new_string(response);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckAll(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();

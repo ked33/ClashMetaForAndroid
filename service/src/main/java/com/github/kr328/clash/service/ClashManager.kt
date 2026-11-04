@@ -5,6 +5,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.service.clash.SelectionDebugLog
+import com.github.kr328.clash.service.clash.NotificationTitle
 import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.remote.IClashManager
@@ -91,6 +92,7 @@ class ClashManager(private val context: Context) : IClashManager,
                 append(" verify_error=${selectionDebug.error(it)}")
             }
         }
+        if (patched) NotificationTitle.selectionChanged()
         selectionDebug.event(
             name = "ui_patch_result",
             dedupeKey = "$profile|$groupToken|$selectedToken|$patched",
@@ -156,6 +158,7 @@ class ClashManager(private val context: Context) : IClashManager,
         })
         try {
             test.await()
+            NotificationTitle.selectionChanged()
         } finally {
             test.cancel()
         }
