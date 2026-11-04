@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"cfa/native/app"
+	"cfa/native/progress"
 	"cfa/native/tunnel"
 )
 
@@ -76,9 +77,17 @@ func querySelectorNow(name C.c_string) *C.char {
 }
 
 //export healthCheck
-func healthCheck(completable unsafe.Pointer, name C.c_string) {
+func healthCheck(completable unsafe.Pointer, name C.c_string, callback unsafe.Pointer) {
 	go func(name string) {
-		tunnel.HealthCheck(name)
+		defer C.release_object(completable)
+		var report func([]progress.Delay) bool
+		if callback != nil {
+			defer C.release_object(callback)
+			report = func(delays []progress.Delay) bool {
+				return C.url_test_report(callback, marshalJson(delays)) != 0
+			}
+		}
+		tunnel.HealthCheck(name, report)
 
 		C.complete(completable, nil)
 	}(C.GoString(name))

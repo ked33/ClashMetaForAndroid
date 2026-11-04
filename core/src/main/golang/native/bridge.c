@@ -11,6 +11,8 @@ void (*fetch_report_func)(void *fetch_callback, const char *status_json);
 
 void (*fetch_complete_func)(void *fetch_callback, const char *error);
 
+int (*url_test_report_func)(void *callback, const char *results_json);
+
 int (*logcat_received_func)(void *logcat_interface, const char *payload);
 
 int (*selector_updated_func)(void *selector_update_interface, const char *group, const char *selected);
@@ -58,6 +60,12 @@ void fetch_report(void *fetch_callback, char *json_status) {
     fetch_report_func(fetch_callback, json_status);
 
     free(json_status);
+}
+
+int url_test_report(void *callback, char *results_json) {
+    int result = url_test_report_func(callback, results_json);
+    free(results_json);
+    return result;
 }
 
 int logcat_received(void *logcat_interface, char *payload) {

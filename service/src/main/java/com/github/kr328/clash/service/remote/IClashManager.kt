@@ -15,7 +15,7 @@ interface IClashManager {
 
     fun patchSelector(group: String, name: String): Boolean
 
-    suspend fun healthCheck(group: String)
+    suspend fun healthCheck(group: String, observer: IUrlTestObserver? = null)
     suspend fun updateProvider(type: Provider.Type, name: String)
 
     fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"cfa/native/progress"
+
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/utils"
 	C "github.com/metacubex/mihomo/constant"
@@ -15,11 +17,29 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 )
 
-func HealthCheck(name string) {
-	healthCheck(name, true)
+type testOptions struct {
+	TestURL        string `json:"testUrl"`
+	ExpectedStatus string `json:"expectedStatus"`
 }
 
-func healthCheck(name string, manual bool) {
+func groupTestOptions(g outboundgroup.ProxyGroup) (testOptions, error) {
+	options := testOptions{}
+	data, err := g.MarshalJSON()
+	if err == nil {
+		err = json.Unmarshal(data, &options)
+	}
+	options.TestURL = strings.TrimSpace(options.TestURL)
+	if options.TestURL == "" {
+		options.TestURL = C.DefaultTestURL
+	}
+	return options, err
+}
+
+func HealthCheck(name string, report func([]progress.Delay) bool) {
+	healthCheck(name, true, report)
+}
+
+func healthCheck(name string, manual bool, report func([]progress.Delay) bool) {
 	p := tunnel.Proxies()[name]
 
 	if p == nil {
@@ -37,21 +57,10 @@ func healthCheck(name string, manual bool) {
 
 	if manual {
 		// Manual tests must also work when providers have no health-check URL.
-		options := struct {
-			TestURL        string `json:"testUrl"`
-			ExpectedStatus string `json:"expectedStatus"`
-		}{}
-		data, err := g.MarshalJSON()
-		if err == nil {
-			err = json.Unmarshal(data, &options)
-		}
+		options, err := groupTestOptions(g)
 		if err != nil {
 			log.Warnln("Request health check for `%s`: %s", name, err)
 			return
-		}
-		options.TestURL = strings.TrimSpace(options.TestURL)
-		if options.TestURL == "" {
-			options.TestURL = C.DefaultTestURL
 		}
 		expectedStatus, err := utils.NewUnsignedRanges[uint16](options.ExpectedStatus)
 		if err != nil {
@@ -61,6 +70,29 @@ func healthCheck(name string, manual bool) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		if report != nil {
+			// Same members and URLTest semantics as GroupBase, with per-result progress.
+			results := make(chan progress.Delay, 64)
+			var wg sync.WaitGroup
+			for _, proxy := range g.Proxies() {
+				wg.Add(1)
+				go func(proxy C.Proxy) {
+					defer wg.Done()
+					_, _ = proxy.URLTest(ctx, options.TestURL, expectedStatus)
+					// URLTest commits history before returning, including failed status checks.
+					results <- progress.Delay{
+						Name:  proxy.Name(),
+						Delay: int(proxy.LastDelayForTestUrl(options.TestURL)),
+					}
+				}(proxy)
+			}
+			go func() {
+				wg.Wait()
+				close(results)
+			}()
+			progress.Stream(results, report, cancel)
+			return
+		}
 		if _, err := g.URLTest(ctx, options.TestURL, expectedStatus); err != nil {
 			log.Debugln("Request health check for `%s`: %s", name, err)
 		}
@@ -85,7 +117,7 @@ func healthCheck(name string, manual bool) {
 func HealthCheckAll() {
 	for _, g := range QueryProxyGroupNames(false) {
 		go func(group string) {
-			healthCheck(group, false)
+			healthCheck(group, false, nil)
 		}(g)
 	}
 }

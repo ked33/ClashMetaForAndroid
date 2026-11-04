@@ -9,6 +9,7 @@ import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
+import com.github.kr328.clash.service.remote.IUrlTestObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import kotlinx.coroutines.*
@@ -142,8 +143,22 @@ class ClashManager(private val context: Context) : IClashManager,
         Clash.clearOverride(slot)
     }
 
-    override suspend fun healthCheck(group: String) {
-        return Clash.healthCheck(group).await()
+    override suspend fun healthCheck(group: String, observer: IUrlTestObserver?) {
+        val test = Clash.healthCheck(group, observer?.let { callback ->
+            { results: List<ProxyDelay> ->
+                try {
+                    callback.onResults(results)
+                } catch (e: Exception) {
+                    Log.w("URL test observer disconnected", e)
+                    false
+                }
+            }
+        })
+        try {
+            test.await()
+        } finally {
+            test.cancel()
+        }
     }
 
     override suspend fun updateProvider(type: Provider.Type, name: String) {

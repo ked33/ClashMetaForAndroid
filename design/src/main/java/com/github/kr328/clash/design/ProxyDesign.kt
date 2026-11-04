@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.ProxyDelay
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.adapter.ProxyAdapter
 import com.github.kr328.clash.design.adapter.ProxyGroupAdapter
@@ -87,6 +88,10 @@ class ProxyDesign(
         get() = adapter.states[binding.pagesView.currentItem].urlTesting
 
     override val root: View = binding.root
+
+    fun updateDelays(position: Int, results: List<ProxyDelay>, redraw: Boolean) {
+        adapter.updateDelays(position, results, redraw)
+    }
 
     suspend fun updateGroup(
         position: Int,
@@ -232,6 +237,7 @@ class ProxyDesign(
         if (groupNames.isEmpty() || urlTesting) return
 
         val position = binding.pagesView.currentItem
+        adapter.beginUrlTest(position)
         adapter.states[position].urlTesting = true
         updateUrlTestButtonStatus()
 
@@ -241,6 +247,7 @@ class ProxyDesign(
     }
 
     fun finishUrlTesting(position: Int) {
+        adapter.finishUrlTest(position)
         adapter.states[position].urlTesting = false
         if (position == binding.pagesView.currentItem) {
             updateUrlTestButtonStatus()

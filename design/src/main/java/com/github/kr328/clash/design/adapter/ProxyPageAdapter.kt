@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.ProxyDelay
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.component.ProxyPageFactory
 import com.github.kr328.clash.design.component.ProxyView
@@ -27,8 +28,29 @@ class ProxyPageAdapter(
     private var parent: RecyclerView? = null
     private val attachedPages = mutableSetOf<ProxyPageFactory.Holder>()
     private var marqueePage = -1
+    private val updateGenerations = IntArray(adapters.size)
 
     val states = List(adapters.size) { ProxyPageState() }
+
+    fun beginUrlTest(position: Int) = adapters[position].beginUrlTest()
+
+    fun finishUrlTest(position: Int) = adapters[position].finishUrlTest()
+
+    fun updateDelays(position: Int, results: List<ProxyDelay>, redraw: Boolean) {
+        val changed = adapters[position].updateDelays(results)
+        if (!redraw || changed.isEmpty()) return
+        for (holder in attachedPages) {
+            val view = holder.recyclerView
+            if (view.position != position || !view.isShown) continue
+            for (index in 0 until view.childCount) {
+                val child = view.getChildAt(index) as? ProxyView ?: continue
+                if (child.state in changed && child.bottom > view.paddingTop &&
+                    child.top < view.height - view.paddingBottom) {
+                    child.postInvalidateOnAnimation()
+                }
+            }
+        }
+    }
 
     fun setMarqueePage(position: Int) {
         if (marqueePage == position) return
@@ -54,6 +76,7 @@ class ProxyPageAdapter(
         parent: ProxyState,
         links: Map<String, ProxyState>
     ) {
+        val generation = ++updateGenerations[position]
         val states = withContext(Dispatchers.Default) {
             proxies.map {
                 val link = if (it.isGroup) links[it.name] else null
@@ -63,9 +86,17 @@ class ProxyPageAdapter(
         }
 
         withContext(Dispatchers.Main) {
+            if (generation != updateGenerations[position]) return@withContext
             adapters[position].apply {
                 this.selectable = selectable
-                this.swapDataSet(this::states, states, false)
+                val previousSize = this.states.size
+                this.states = states
+                if (previousSize == states.size) {
+                    notifyItemRangeChanged(0, states.size)
+                } else {
+                    notifyItemRangeRemoved(0, previousSize)
+                    notifyItemRangeInserted(0, states.size)
+                }
             }
 
             requestRedrawVisible()

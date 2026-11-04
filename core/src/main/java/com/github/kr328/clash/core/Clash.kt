@@ -123,9 +123,14 @@ object Clash {
         return Bridge.nativeQuerySelectorNow(name)
     }
 
-    fun healthCheck(name: String): CompletableDeferred<Unit> {
+    fun healthCheck(name: String, report: ((List<ProxyDelay>) -> Boolean)? = null): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
-            Bridge.nativeHealthCheck(this, name)
+            val callback = report?.let { handler ->
+                UrlTestCallback { json ->
+                    isActive && handler(Json.decodeFromString(ListSerializer(ProxyDelay.serializer()), json))
+                }
+            }
+            Bridge.nativeHealthCheck(this, name, callback)
         }
     }
 

@@ -173,6 +173,10 @@ jobs:
           } > signing.properties
           echo "Signing materials prepared (passwords not printed)."
 
+      - name: Check incremental URL test batching
+        working-directory: core/src/main/golang
+        run: go test -race -timeout 30s ./native/progress
+
       - name: Release Build (meta / arm64-v8a only)
         run: ./gradlew --no-daemon --build-cache app:assembleMetaRelease
 

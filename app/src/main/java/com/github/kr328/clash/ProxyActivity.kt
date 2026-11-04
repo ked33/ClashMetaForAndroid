@@ -3,9 +3,12 @@ package com.github.kr328.clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.ProxyDelay
 import com.github.kr328.clash.design.ProxyDesign
 import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.remote.StatusClient
+import com.github.kr328.clash.service.remote.IUrlTestObserver
+import com.github.kr328.clash.util.ProxyDelayUpdates
 import com.github.kr328.clash.util.withClash
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
@@ -48,6 +51,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
+                        Event.ActivityStart -> design.requestRedrawVisible()
                         Event.ProfileLoading,
                         Event.ClashStop,
                         Event.ServiceRecreated -> finish()
@@ -117,17 +121,45 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                             }
                         }
                         is ProxyDesign.Request.UrlTest -> {
-                            launch {
+                            launch testing@ {
+                                val progress = ProxyDelayUpdates()
+                                val updater = launch {
+                                    try {
+                                        for (signal in progress.available) {
+                                            design.updateDelays(it.index, progress.drain(), activityStarted)
+                                        }
+                                    } finally {
+                                        progress.cancel()
+                                    }
+                                }
                                 try {
                                     withClash {
-                                        healthCheck(names[it.index])
+                                        val observer = object : IUrlTestObserver {
+                                            override fun onResults(results: List<ProxyDelay>): Boolean =
+                                                this@testing.isActive && progress.offer(results)
+                                        }
+                                        healthCheck(names[it.index], observer)
                                     }
 
+                                    progress.close()
+                                    updater.join()
+                                    // One final reload applies the requested sort and actual group selection.
                                     val generation = ++reloadGenerations[it.index]
-                                    design.requests.send(
-                                        ProxyDesign.Request.Reload(it.index, generation)
-                                    )
+                                    val group = withClash {
+                                        queryProxyGroup(names[it.index], uiStore.proxySort)
+                                    }
+                                    if (generation == reloadGenerations[it.index]) {
+                                        val state = states[it.index]
+                                        state.now = group.now
+                                        design.updateGroup(
+                                            it.index, group.proxies,
+                                            group.type == "Selector" || group.type == "Fallback",
+                                            state, unorderedStates
+                                        )
+                                    }
                                 } finally {
+                                    progress.cancel()
+                                    updater.cancel()
                                     design.finishUrlTesting(it.index)
                                 }
                             }

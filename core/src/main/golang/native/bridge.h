@@ -19,6 +19,8 @@ extern void (*fetch_report_func)(void *fetch_callback, const char *status_json);
 
 extern void (*fetch_complete_func)(void *fetch_callback, const char *error);
 
+extern int (*url_test_report_func)(void *callback, const char *results_json);
+
 extern int (*logcat_received_func)(void *logcat_interface, const char *payload);
 
 extern int (*selector_updated_func)(void *selector_update_interface, const char *group, const char *selected);
@@ -37,6 +39,8 @@ extern void complete(void *obj, char *error);
 extern void fetch_complete(void *completable, char *exception);
 
 extern void fetch_report(void *fetch_callback, char *status_json);
+
+extern int url_test_report(void *callback, char *results_json);
 
 extern int logcat_received(void *logcat_interface, char *payload);
 

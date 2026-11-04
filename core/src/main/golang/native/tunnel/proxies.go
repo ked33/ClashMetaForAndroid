@@ -98,7 +98,8 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 		return nil
 	}
 
-	proxies := convertProxies(g.Proxies(), uiSubtitlePattern)
+	options, _ := groupTestOptions(g)
+	proxies := convertProxies(g.Proxies(), uiSubtitlePattern, options.TestURL)
 	// 	proxies := collectProviders(g.Providers(), uiSubtitlePattern)
 
 	switch sortMode {
@@ -181,7 +182,7 @@ func PatchSelector(selector, name string) bool {
 	return true
 }
 
-func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Proxy {
+func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, testURL string) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
 	for _, p := range proxies {
@@ -197,13 +198,6 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Pro
 					title = string(runes[:match.Index]) + string(runes[match.Index+match.Length:])
 					subtitle = string(runes[match.Index : match.Index+match.Length])
 				}
-			}
-		}
-		testURL := "https://www.gstatic.com/generate_204"
-		for k := range p.ExtraDelayHistories() {
-			if len(k) > 0 {
-				testURL = k
-				break
 			}
 		}
 		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)

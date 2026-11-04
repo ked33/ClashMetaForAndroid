@@ -21,17 +21,28 @@ class ProxyViewState(
 
     var title: String = ""
     var subtitle: String = ""
-    var delayText: String = ""
+    var delayText: String = formatDelay(proxy.delay)
+        private set
     var background: Int = config.unselectedBackground
     var controls: Int = config.unselectedControl
 
-    private var delay: Int = 0
+    private var delay: Int = proxy.delay
     var selected: Boolean = false
         private set
     private var parentNow: String = ""
     private var linkNow: String? = null
 
     private var lastFrameTime = System.currentTimeMillis()
+
+    fun updateDelay(value: Int): Boolean {
+        if (delay == value) return false
+        delay = value
+        delayText = formatDelay(value)
+        return true
+    }
+
+    private fun formatDelay(value: Int): String =
+        if (value in 0..Short.MAX_VALUE) value.toString() else ""
 
     fun update(snap: Boolean): Boolean {
         val frameTime = System.currentTimeMillis()
@@ -55,11 +66,6 @@ class ProxyViewState(
         } else {
             title = proxy.title
             subtitle = proxy.subtitle
-        }
-
-        if (delay != proxy.delay) {
-            delay = proxy.delay
-            delayText = if (proxy.delay in 0..Short.MAX_VALUE) proxy.delay.toString() else ""
         }
 
         if (parentNow !== parent.now) {

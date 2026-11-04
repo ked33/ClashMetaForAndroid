@@ -200,13 +200,14 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQuerySelectorNow(JNIEnv *en
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheck(JNIEnv *env, jobject thiz,
                                                                  jobject completable,
-                                                                 jstring name) {
+                                                                 jstring name,
+                                                                 jobject callback) {
     TRACE_METHOD();
 
     jobject _completable = new_global(completable);
     scoped_string _name = get_string(name);
 
-    healthCheck(_completable, _name);
+    healthCheck(_completable, _name, callback == NULL ? NULL : new_global(callback));
 }
 
 JNIEXPORT void JNICALL
@@ -439,6 +440,7 @@ static jmethodID m_selector_update_interface_updated;
 static jmethodID m_clash_exception;
 static jmethodID m_fetch_callback_report;
 static jmethodID m_fetch_callback_complete;
+static jmethodID m_url_test_callback_report;
 static jmethodID m_open;
 static jmethodID m_get_message;
 static jclass c_clash_exception;
@@ -520,6 +522,22 @@ static void call_fetch_callback_complete_impl(void *fetch_callback, const char *
                            (jobject) fetch_callback,
                            (jmethodID) m_fetch_callback_complete,
                            (jstring) _error);
+}
+
+static int call_url_test_callback_report_impl(void *callback, const char *results_json) {
+    ATTACH_JNI();
+
+    // Bound local references even when Go reuses an already attached thread.
+    if ((*env)->PushLocalFrame(env, 4) < 0) {
+        jni_catch_exception(env);
+        return 0;
+    }
+    jboolean result = (*env)->CallBooleanMethod(env, (jobject) callback,
+                                               m_url_test_callback_report,
+                                               new_string(results_json));
+    int failed = jni_catch_exception(env);
+    (*env)->PopLocalFrame(env, NULL);
+    return !failed && result == JNI_TRUE;
 }
 
 static int call_logcat_interface_received_impl(void *callback, const char *payload) {
@@ -612,6 +630,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     jclass c_tun_interface = find_class("com/github/kr328/clash/core/bridge/TunInterface");
     jclass c_completable = find_class("kotlinx/coroutines/CompletableDeferred");
     jclass c_fetch_callback = find_class("com/github/kr328/clash/core/bridge/FetchCallback");
+    jclass c_url_test_callback = find_class("com/github/kr328/clash/core/bridge/UrlTestCallback");
     jclass c_logcat_interface = find_class("com/github/kr328/clash/core/bridge/LogcatInterface");
     jclass c_selector_update_interface = find_class("com/github/kr328/clash/core/bridge/SelectorUpdateInterface");
     jclass _c_clash_exception = find_class("com/github/kr328/clash/core/bridge/ClashException");
@@ -629,6 +648,8 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
                                           "(Ljava/lang/String;)V");
     m_fetch_callback_complete = find_method(c_fetch_callback, "complete",
                                             "(Ljava/lang/String;)V");
+    m_url_test_callback_report = find_method(c_url_test_callback, "report",
+                                            "(Ljava/lang/String;)Z");
     m_completable_complete_exceptionally = find_method(c_completable, "completeExceptionally",
                                                        "(Ljava/lang/Throwable;)Z");
     m_logcat_interface_received = find_method(c_logcat_interface, "received",
@@ -655,6 +676,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     complete_func = &call_completable_complete_impl;
     fetch_report_func = &call_fetch_callback_report_impl;
     fetch_complete_func = &call_fetch_callback_complete_impl;
+    url_test_report_func = &call_url_test_callback_report_impl;
     logcat_received_func = &call_logcat_interface_received_impl;
     selector_updated_func = &call_selector_update_interface_updated_impl;
     open_content_func = &open_content_impl;
