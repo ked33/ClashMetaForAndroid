@@ -209,7 +209,14 @@ class ProxyView(
         val width = width.toFloat()
         val height = height.toFloat()
 
+        paint.reset()
         paint.textSize = state.config.textSize
+
+        // Keep the system font's baseline, matching the existing card height in onMeasure.
+        val textOffset = (paint.descent() + paint.ascent()) / 2
+        paint.typeface = state.config.textTypeface
+        paint.isAntiAlias = true
+        paint.color = state.controls
 
         // measure delay text bounds
         if (cachedDelay != state.delayText || cachedTextSize != paint.textSize || cachedWidth != this.width) {
@@ -241,15 +248,6 @@ class ProxyView(
         val now = if (scrolling) SystemClock.uptimeMillis() else 0L
         val speed = 30f * resources.displayMetrics.density / 1000f
         val gap = mainTextWidth / 3f
-
-        // text draw measure
-        val textOffset = (paint.descent() + paint.ascent()) / 2
-
-        paint.reset()
-
-        paint.textSize = state.config.textSize
-        paint.isAntiAlias = true
-        paint.color = state.controls
 
         // draw delay
         canvas.apply {

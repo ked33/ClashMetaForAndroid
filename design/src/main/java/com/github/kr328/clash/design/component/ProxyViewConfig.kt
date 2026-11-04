@@ -10,6 +10,8 @@ import com.github.kr328.clash.design.util.resolveThemedResourceId
 class ProxyViewConfig(val context: Context, var proxyLine: Int) {
     private val colorSurface = context.resolveThemedColor(com.google.android.material.R.attr.colorSurface)
 
+    val textTypeface = ProxyTypeface.get(context)
+
     val clickableBackground =
         context.resolveThemedResourceId(android.R.attr.selectableItemBackground)
 
