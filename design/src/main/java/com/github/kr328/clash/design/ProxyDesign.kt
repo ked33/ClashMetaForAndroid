@@ -82,11 +82,8 @@ class ProxyDesign(
     private var horizontalScrolling = false
     private val verticalBottomScrolled: Boolean
         get() = adapter.states[binding.pagesView.currentItem].bottom
-    private var urlTesting: Boolean
+    private val urlTesting: Boolean
         get() = adapter.states[binding.pagesView.currentItem].urlTesting
-        set(value) {
-            adapter.states[binding.pagesView.currentItem].urlTesting = value
-        }
 
     override val root: View = binding.root
 
@@ -100,7 +97,6 @@ class ProxyDesign(
         adapter.updateAdapter(position, proxies, selectable, parent, links)
 
         withContext(Dispatchers.Main) {
-            adapter.states[position].urlTesting = false
             updateGroupPicker(position)
 
             if (position == binding.pagesView.currentItem) {
@@ -184,6 +180,7 @@ class ProxyDesign(
                         uiStore.proxyLastGroup = groupNames[position]
                         groupPickerAdapter?.select(position)
                         updateGroupNavigation()
+                        updateUrlTestButtonStatus()
                     }
                 })
             }
@@ -208,11 +205,22 @@ class ProxyDesign(
     }
 
     fun requestUrlTesting() {
-        urlTesting = true
+        if (groupNames.isEmpty() || urlTesting) return
 
-        requests.trySend(Request.UrlTest(binding.pagesView.currentItem))
-
+        val position = binding.pagesView.currentItem
+        adapter.states[position].urlTesting = true
         updateUrlTestButtonStatus()
+
+        if (requests.trySend(Request.UrlTest(position)).isFailure) {
+            finishUrlTesting(position)
+        }
+    }
+
+    fun finishUrlTesting(position: Int) {
+        adapter.states[position].urlTesting = false
+        if (position == binding.pagesView.currentItem) {
+            updateUrlTestButtonStatus()
+        }
     }
 
     private fun configureGroupNavigator() {

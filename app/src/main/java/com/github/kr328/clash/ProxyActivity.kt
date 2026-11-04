@@ -118,14 +118,18 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                         }
                         is ProxyDesign.Request.UrlTest -> {
                             launch {
-                                withClash {
-                                    healthCheck(names[it.index])
-                                }
+                                try {
+                                    withClash {
+                                        healthCheck(names[it.index])
+                                    }
 
-                                val generation = ++reloadGenerations[it.index]
-                                design.requests.send(
-                                    ProxyDesign.Request.Reload(it.index, generation)
-                                )
+                                    val generation = ++reloadGenerations[it.index]
+                                    design.requests.send(
+                                        ProxyDesign.Request.Reload(it.index, generation)
+                                    )
+                                } finally {
+                                    design.finishUrlTesting(it.index)
+                                }
                             }
                         }
                         is ProxyDesign.Request.PatchMode -> {
