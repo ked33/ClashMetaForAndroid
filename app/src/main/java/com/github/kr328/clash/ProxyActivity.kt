@@ -123,6 +123,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                             }
                         }
                         is ProxyDesign.Request.UrlTest -> {
+                            val proxyName = it.name
                             launch testing@ {
                                 val progress = ProxyDelayUpdates()
                                 val updater = launch {
@@ -140,13 +141,13 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                             override fun onResults(results: List<ProxyDelay>): Boolean =
                                                 this@testing.isActive && progress.offer(results)
                                         }
-                                        healthCheck(names[it.index], observer, it.name)
+                                        healthCheck(names[it.index], observer, proxyName)
                                     }
 
                                     progress.close()
                                     updater.join()
                                     val generation = ++reloadGenerations[it.index]
-                                    if (it.name == null) {
+                                    if (proxyName == null) {
                                         // Group tests sort once at the end. Single-node tests retain position.
                                         val group = withClash {
                                             queryProxyGroup(names[it.index], uiStore.proxySort)
@@ -173,8 +174,8 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 } finally {
                                     progress.cancel()
                                     updater.cancel()
-                                    if (it.name == null) design.finishUrlTesting(it.index)
-                                    else design.finishNodeTesting(it.index, it.name)
+                                    if (proxyName == null) design.finishUrlTesting(it.index)
+                                    else design.finishNodeTesting(it.index, proxyName)
                                 }
                             }
                         }
