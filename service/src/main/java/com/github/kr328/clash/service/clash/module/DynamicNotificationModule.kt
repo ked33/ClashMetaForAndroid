@@ -43,6 +43,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
 
     private val notificationManager = NotificationManagerCompat.from(service)
     private val title = NotificationTitle(service)
+    private val expandedStyle = NotificationCompat.BigTextStyle()
 
     private fun update() {
         val now = Clash.queryTrafficNow()
@@ -53,20 +54,20 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         val uploaded = total.trafficUpload()
         val downloaded = total.trafficDownload()
 
+        val speedText = service.getString(
+            R.string.clash_notification_content,
+            "$uploading/s", "$downloading/s"
+        )
+        val totalText = service.getString(
+            R.string.clash_notification_content,
+            uploaded, downloaded
+        )
+        val nodeName = title.resolve()
+
         val notification = builder
-            .setContentTitle(title.resolve())
-            .setContentText(
-                service.getString(
-                    R.string.clash_notification_content,
-                    "$uploading/s", "$downloading/s"
-                )
-            )
-            .setSubText(
-                service.getString(
-                    R.string.clash_notification_content,
-                    uploaded, downloaded
-                )
-            )
+            .setContentTitle("$speedText · $totalText")
+            .setContentText(nodeName)
+            .setStyle(expandedStyle.bigText(nodeName))
             .build()
 
         notificationManager.notify(R.id.nf_clash_status, notification)
